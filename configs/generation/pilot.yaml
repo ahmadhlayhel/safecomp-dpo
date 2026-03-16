@@ -14,19 +14,26 @@ pilot_counts:
   benign_sensitive: 5
   benign: 5
 
-# Response types that are expected (and therefore valid to collect)
-# for each prompt category.  Mirrors CLAUDE.md expected_responses.
+# Response types generated at this stage (acceptable responses only).
+# unsafe_compliance is excluded: rejected responses are sourced separately,
+# not generated alongside acceptable responses.
+#
+# benign and benign_sensitive both generate helpful_answer only.
+# Their rejected sides (hard_refusal) are sourced at the preference-pair
+# construction stage, not here.
+#
+# Open design question (full project): benign prompts may eventually use
+# quality pairs (chosen=helpful_answer, rejected=weak_answer) rather than
+# refusal pairs.  That requires a separate sourcing strategy and a new
+# ResponseType enum value.  Not implemented for the pilot.
 expected_response_types:
   unsafe:
     - hard_refusal
     - safe_completion
-    - unsafe_compliance
   dual_use:
     - hard_refusal
     - safe_completion
-    - unsafe_compliance
   benign_sensitive:
-    - hard_refusal
     - helpful_answer
   benign:
     - helpful_answer
