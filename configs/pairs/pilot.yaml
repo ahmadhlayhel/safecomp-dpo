@@ -1,0 +1,42 @@
+# Pilot pair-construction config — Stage 1
+# Defines which PreferencePairs to construct per prompt category.
+#
+# Each rule specifies:
+#   pair_type     — PairType enum value (safe_completion | baseline_refusal)
+#   chosen_type   — ResponseType of the chosen (preferred) response
+#   rejected_type — ResponseType of the rejected response
+#
+# An empty list means no pairs are constructed for that category.
+# This is explicit, not silent: the category is listed so omissions are visible.
+#
+# Pilot scope: dual_use only.
+# Both required response types (safe_completion, hard_refusal) are available
+# from the pilot generation stage.
+
+pair_rules:
+
+  dual_use:
+    - pair_type: safe_completion
+      chosen_type: safe_completion
+      rejected_type: hard_refusal
+
+  # Open design question (full project):
+  # The project blueprint currently specifies two competing designs for unsafe pairs:
+  #   SafeComp variant:  chosen = safe_completion, rejected = unsafe_compliance
+  #   Baseline variant:  chosen = hard_refusal,    rejected = unsafe_compliance
+  # Resolving this requires an explicit design decision about whether the
+  # SafeComp vs. baseline divergence applies to unsafe prompts or is
+  # concentrated entirely in dual_use.  Not resolved for the pilot.
+  # Deferred also because unsafe_compliance responses are not yet sourced.
+  unsafe: []
+
+  # benign_sensitive: deferred — rejected (hard_refusal) responses not yet sourced.
+  # pair_type will be safe_completion when added; treat as a partition label
+  # for these categories rather than a literal training-behavior signal
+  # (see CLAUDE.md preference-pair semantics).
+  benign_sensitive: []
+
+  # benign: same situation as benign_sensitive.
+  # Open full-project question: whether to use (helpful_answer, hard_refusal)
+  # or quality pairs (helpful_answer, weak_answer).  Deferred.
+  benign: []
