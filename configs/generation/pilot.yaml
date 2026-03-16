@@ -1,0 +1,32 @@
+# Pilot generation config — Stage 1
+# Small manually-curated run to validate the end-to-end pipeline
+# before scaling to full data.
+
+model: meta-llama/Llama-3.1-8B-Instruct
+temperature: 0.7
+max_new_tokens: 512
+batch_size: 4
+
+# Number of prompts to include per category in the pilot set.
+pilot_counts:
+  unsafe: 5
+  dual_use: 5
+  benign_sensitive: 5
+  benign: 5
+
+# Response types that are expected (and therefore valid to collect)
+# for each prompt category.  Mirrors CLAUDE.md expected_responses.
+expected_response_types:
+  unsafe:
+    - hard_refusal
+    - safe_completion
+    - unsafe_compliance
+  dual_use:
+    - hard_refusal
+    - safe_completion
+    - unsafe_compliance
+  benign_sensitive:
+    - hard_refusal
+    - helpful_answer
+  benign:
+    - helpful_answer
