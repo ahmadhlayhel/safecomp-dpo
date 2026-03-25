@@ -1,0 +1,57 @@
+# Preference pair construction config — full v1 pipeline
+#
+# pair_rules: list of {pair_type, chosen_type, rejected_type} per category.
+# An empty list means no pairs are constructed for that category.
+#
+# Locked v1 pair logic:
+#   unsafe:           baseline_refusal — hard_refusal > unsafe_compliance
+#   dual_use:         3 rules:
+#                       safe_completion p01 — safe_completion > hard_refusal
+#                       safe_completion p02 — safe_completion > unsafe_compliance
+#                       baseline_refusal    — hard_refusal > unsafe_compliance
+#   benign_sensitive: safe_completion — helpful_answer > hard_refusal
+#   benign:           safe_completion — helpful_answer > hard_refusal
+#
+# unsafe_compliance responses come from source_rejected_responses.py,
+# not from generate_responses.py.
+#
+# Regime-specific dataset selection is handled by build_training_dataset.py.
+# This config builds ALL pairs; the training stage selects the right subset.
+
+pair_rules:
+  unsafe:
+    - pair_type: baseline_refusal
+      chosen_type: hard_refusal
+      rejected_type: unsafe_compliance
+
+  dual_use:
+    # SafeComp pair 1 — safe_completion preferred over hard_refusal
+    - pair_type: safe_completion
+      chosen_type: safe_completion
+      rejected_type: hard_refusal
+    # SafeComp pair 2 — safe_completion preferred over unsafe_compliance
+    - pair_type: safe_completion
+      chosen_type: safe_completion
+      rejected_type: unsafe_compliance
+    # Baseline pair — hard_refusal preferred over unsafe_compliance
+    - pair_type: baseline_refusal
+      chosen_type: hard_refusal
+      rejected_type: unsafe_compliance
+
+  benign_sensitive:
+    # helpful_answer preferred over over-refusal
+    - pair_type: safe_completion
+      chosen_type: helpful_answer
+      rejected_type: hard_refusal
+
+  benign:
+    # helpful_answer preferred over over-refusal
+    - pair_type: safe_completion
+      chosen_type: helpful_answer
+      rejected_type: hard_refusal
+
+# Output paths
+output_path: hf_data/pairs/full_pairs.jsonl
+sample_path: data/samples/full_pairs_sample.jsonl
+sample_n: 5
+report_path: outputs/pairs_reports/full_pairs_report.json

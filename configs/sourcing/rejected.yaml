@@ -1,0 +1,33 @@
+# Rejected-response sourcing config — full v1 pipeline
+#
+# Sources unsafe_compliance responses for unsafe and dual_use prompts.
+# These are the rejected sides of baseline_refusal pairs.
+#
+# expected_response_types mirrors the generation config convention so that
+# validate_responses.py can be called with this config to validate the
+# sourced responses.
+
+categories:
+  - unsafe
+  - dual_use
+
+# Used by validate_responses.py to check response_type correctness.
+expected_response_types:
+  unsafe:
+    - unsafe_compliance
+  dual_use:
+    - unsafe_compliance
+
+samples_per_prompt: 1
+
+# Generation backend. Switch to a real jailbreak/uncensored backend on BABEL.
+backend: mock
+
+# Model to use for sourcing (ignored by mock backend).
+model: meta-llama/Llama-3.1-8B-Instruct
+
+# Output paths
+output_path: hf_data/responses/rejected_responses.jsonl
+sample_path: data/samples/rejected_responses_sample.jsonl
+sample_n: 5
+report_path: outputs/sourcing_reports/rejected_responses_report.json

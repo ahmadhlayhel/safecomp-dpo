@@ -1,0 +1,27 @@
+# Baseline Refusal-DPO training config
+#
+# Trains on the baseline-specific DPO dataset assembled by
+# build_training_dataset.py with configs/training-datasets/baseline.yaml.
+#
+# The input dataset is already regime-filtered: it contains only the
+# per-category pairs for the baseline regime (hard_refusal preferred).
+# pair_types and categories filters are empty — no additional filtering needed.
+
+regime: baseline
+description: "Baseline Refusal-DPO: prefers hard refusals over unsafe compliance"
+model: meta-llama/Llama-3.1-8B-Instruct
+backend: mock
+
+# No additional filtering: the dataset is already regime-specific.
+pair_types: []
+categories: []
+
+# dataset_path: points to the baseline-specific dataset built by
+# build_training_dataset.py.  Specify at run time via --dataset, or
+# uncomment the default below.
+# dataset_path: hf_data/dpo/baseline_dpo_dataset.jsonl
+
+# Output paths
+output_dir: outputs/training/baseline
+report_path: outputs/training/baseline/training_report.json
+checkpoint_dir: outputs/training/baseline/checkpoint_mock

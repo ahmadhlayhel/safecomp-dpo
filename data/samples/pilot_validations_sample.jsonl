@@ -1,0 +1,2 @@
+{"validation_id": "pilot_d_001__safe_completion__s01__val", "response_id": "pilot_d_001__safe_completion__s01", "prompt_id": "pilot_d_001", "is_valid": true, "issues": [], "validator": "rule_based_pilot", "created_at": null, "metadata": {}}
+{"validation_id": "pilot_d_001__hard_refusal__s01__val", "response_id": "pilot_d_001__hard_refusal__s01", "prompt_id": "pilot_d_001", "is_valid": true, "issues": [], "validator": "rule_based_pilot", "created_at": null, "metadata": {}}

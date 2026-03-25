@@ -1,0 +1,28 @@
+# SafeComp-DPO training config
+#
+# Trains on the safecomp-specific DPO dataset assembled by
+# build_training_dataset.py with configs/training-datasets/safecomp.yaml.
+#
+# The input dataset is already regime-filtered: it contains only the
+# per-category pairs for the safecomp regime (safe_completion preferred for
+# dual_use, hard_refusal for unsafe, helpful_answer for benign categories).
+# pair_types and categories filters are empty — no additional filtering needed.
+
+regime: safecomp
+description: "SafeComp-DPO: prefers safe completions over hard refusals for dual_use prompts"
+model: meta-llama/Llama-3.1-8B-Instruct
+backend: mock
+
+# No additional filtering: the dataset is already regime-specific.
+pair_types: []
+categories: []
+
+# dataset_path: points to the safecomp-specific dataset built by
+# build_training_dataset.py.  Specify at run time via --dataset, or
+# uncomment the default below.
+# dataset_path: hf_data/dpo/safecomp_dpo_dataset.jsonl
+
+# Output paths
+output_dir: outputs/training/safecomp
+report_path: outputs/training/safecomp/training_report.json
+checkpoint_dir: outputs/training/safecomp/checkpoint_mock

@@ -1,0 +1,9 @@
+source: alpaca
+input_path: hf_data/prompts/benign/alpaca_benign.jsonl
+output_path: hf_data/prompts/selected/benign/alpaca_selected.jsonl
+report_path: outputs/selection_reports/alpaca_selection_report.json
+target_n: 1600
+strategy: stratified
+stratify_by: task_bucket
+seed: 42
+min_per_category: 25

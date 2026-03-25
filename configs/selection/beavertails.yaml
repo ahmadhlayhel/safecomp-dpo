@@ -1,0 +1,9 @@
+source: beavertails
+input_path: hf_data/prompts/unsafe/beavertails_unsafe.jsonl
+output_path: hf_data/prompts/selected/unsafe/beavertails_selected.jsonl
+report_path: outputs/selection_reports/beavertails_selection_report.json
+target_n: 1800
+strategy: stratified
+primary_label_rule: least_frequent_active
+seed: 42
+min_per_category: 10

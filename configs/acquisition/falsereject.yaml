@@ -1,0 +1,9 @@
+source: falsereject
+hf_dataset: AmazonScience/FalseReject
+split: train
+output_category: benign_sensitive
+min_prompt_chars: 20
+dedup: true
+output_path: hf_data/prompts/benign_sensitive/falsereject_benign_sensitive.jsonl
+sample_path: data/samples/falsereject_sample.jsonl
+sample_n: 5

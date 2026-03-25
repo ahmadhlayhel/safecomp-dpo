@@ -1,0 +1,37 @@
+# Baseline Refusal-DPO training dataset config
+#
+# Selects the per-category pairs for the baseline training regime.
+# Input:  full assembled DPO dataset (all categories and pair types)
+# Output: baseline-specific DPO dataset
+#
+# Baseline regime pair logic:
+#   unsafe:           baseline_refusal (hard_refusal > unsafe_compliance)
+#   dual_use:         baseline_refusal (hard_refusal > unsafe_compliance)
+#   benign_sensitive: safe_completion  (helpful_answer > hard_refusal)
+#   benign:           safe_completion  (helpful_answer > hard_refusal)
+#
+# Note: baseline and safecomp share the same unsafe / benign_sensitive / benign
+# pairs.  They diverge only on dual_use: baseline uses baseline_refusal while
+# safecomp uses safe_completion (two rules per prompt).
+
+regime: baseline
+description: "Baseline Refusal-DPO: per-category regime-specific dataset"
+
+include_rules:
+  - category: unsafe
+    pair_type: baseline_refusal
+  - category: dual_use
+    pair_type: baseline_refusal
+  - category: benign_sensitive
+    pair_type: safe_completion
+  - category: benign
+    pair_type: safe_completion
+
+# input_path: specify at run time via --input, or set a default here:
+input_path: hf_data/dpo/full_dpo_dataset.jsonl
+
+# Output paths
+output_path: hf_data/dpo/baseline_dpo_dataset.jsonl
+sample_path: data/samples/baseline_dpo_sample.jsonl
+sample_n: 5
+report_path: outputs/dataset_reports/baseline_dataset_report.json

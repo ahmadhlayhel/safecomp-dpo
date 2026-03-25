@@ -1,0 +1,9 @@
+source: falsereject
+input_path: hf_data/prompts/benign_sensitive/falsereject_benign_sensitive.jsonl
+output_path: hf_data/prompts/selected/benign_sensitive/falsereject_selected.jsonl
+report_path: outputs/selection_reports/falsereject_selection_report.json
+target_n: 2000
+strategy: stratified
+stratify_by: fr_category_id
+seed: 42
+min_per_category: 10

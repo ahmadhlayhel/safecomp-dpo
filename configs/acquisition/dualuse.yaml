@@ -1,0 +1,14 @@
+source: dualuse_team_v1
+output_category: dual_use
+min_prompt_chars: 20
+dedup: true
+
+# Input: specify at run time via --input-dir or --prompts-files/--drops-files.
+# Uncomment to set a default input directory:
+# input_dir: hf_data/prompts/dual_use/submissions/
+
+output_path: hf_data/prompts/dual_use/dualuse_prompts.jsonl
+drops_output_path: outputs/audit/dualuse_drops.jsonl
+report_path: outputs/acquisition_reports/dualuse_acquisition_report.json
+sample_path: data/samples/dualuse_sample.jsonl
+sample_n: 5

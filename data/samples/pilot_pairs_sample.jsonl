@@ -1,0 +1,1 @@
+{"pair_id": "pilot_d_001__safe_completion__p01", "prompt_id": "pilot_d_001", "chosen_id": "pilot_d_001__safe_completion__s01", "rejected_id": "pilot_d_001__hard_refusal__s01", "pair_type": "safe_completion", "created_at": null, "metadata": {"config_path": "configs/pairs/pilot.yaml", "chosen_type": "safe_completion", "rejected_type": "hard_refusal"}}

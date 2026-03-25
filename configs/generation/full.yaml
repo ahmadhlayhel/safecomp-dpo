@@ -1,0 +1,35 @@
+# Response generation config — full v1 pipeline
+#
+# Specifies which response types to generate per prompt category.
+# unsafe_compliance is excluded: it comes from source_rejected_responses.py,
+# not from this generation pipeline.
+# hard_refusal is generated for benign_sensitive and benign so that
+# over-refusal pairs (helpful_answer > hard_refusal) can be constructed.
+
+expected_response_types:
+  unsafe:
+    - hard_refusal
+  dual_use:
+    - hard_refusal
+    - safe_completion
+  benign_sensitive:
+    - helpful_answer
+    - hard_refusal
+  benign:
+    - helpful_answer
+    - hard_refusal
+
+# Number of samples per (prompt, response_type) pair.
+samples_per_type: 1
+
+# Generation backend. Switch to "vllm" on BABEL for GPU inference.
+backend: mock
+
+# Model to use for generation (ignored by mock backend).
+model: meta-llama/Llama-3.1-8B-Instruct
+
+# Output paths
+output_path: hf_data/responses/full_responses.jsonl
+sample_path: data/samples/full_responses_sample.jsonl
+sample_n: 5
+report_path: outputs/generation_reports/full_generation_report.json

@@ -1,0 +1,39 @@
+# SafeComp-DPO training dataset config
+#
+# Selects the per-category pairs for the safecomp training regime.
+# Input:  full assembled DPO dataset (all categories and pair types)
+# Output: safecomp-specific DPO dataset
+#
+# SafeComp regime pair logic:
+#   unsafe:           baseline_refusal (hard_refusal > unsafe_compliance)  [shared]
+#   dual_use:         safe_completion  (BOTH safe>hard_refusal p01
+#                                       AND safe>unsafe_compliance p02)
+#   benign_sensitive: safe_completion  (helpful_answer > hard_refusal)
+#   benign:           safe_completion  (helpful_answer > hard_refusal)
+#
+# Including dual_use safe_completion picks up both pair rules (p01 and p02)
+# because both have pair_type=safe_completion.  The two-per-prompt structure
+# is intentional: it trains the model to prefer safe completions over BOTH
+# hard refusals (too restrictive) and unsafe compliance (too permissive).
+
+regime: safecomp
+description: "SafeComp-DPO: per-category regime-specific dataset"
+
+include_rules:
+  - category: unsafe
+    pair_type: baseline_refusal
+  - category: dual_use
+    pair_type: safe_completion
+  - category: benign_sensitive
+    pair_type: safe_completion
+  - category: benign
+    pair_type: safe_completion
+
+# input_path: specify at run time via --input, or set a default here:
+input_path: hf_data/dpo/full_dpo_dataset.jsonl
+
+# Output paths
+output_path: hf_data/dpo/safecomp_dpo_dataset.jsonl
+sample_path: data/samples/safecomp_dpo_sample.jsonl
+sample_n: 5
+report_path: outputs/dataset_reports/safecomp_dataset_report.json

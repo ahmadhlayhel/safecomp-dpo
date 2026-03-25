@@ -1,0 +1,9 @@
+source: beavertails
+hf_dataset: PKU-Alignment/BeaverTails
+split: 30k_train
+output_category: unsafe
+min_prompt_chars: 20
+dedup: true
+output_path: hf_data/prompts/unsafe/beavertails_unsafe.jsonl
+sample_path: data/samples/beavertails_sample.jsonl
+sample_n: 5

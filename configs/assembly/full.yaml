@@ -1,0 +1,19 @@
+# DPO dataset assembly config — full v1 pipeline
+#
+# Joins PromptRecord + ResponseRecord + ValidationRecord + PreferencePair
+# into flat DPORecord JSONL ready for training.
+#
+# All paths are relative to the repo root.
+# Large artifacts live under hf_data/ (gitignored, private HF dataset clone).
+
+# Input paths
+prompts_path: hf_data/prompts/all_prompts.jsonl
+responses_path: hf_data/responses/full_responses.jsonl
+validations_path: hf_data/validations/full_validations.jsonl
+pairs_path: hf_data/pairs/full_pairs.jsonl
+
+# Output paths
+output_path: hf_data/dpo/full_dpo_dataset.jsonl
+sample_path: data/samples/full_dpo_sample.jsonl
+sample_n: 5
+report_path: outputs/assembly_reports/full_assembly_report.json

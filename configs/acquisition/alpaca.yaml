@@ -1,0 +1,9 @@
+source: alpaca
+hf_dataset: tatsu-lab/alpaca
+split: train
+output_category: benign
+min_prompt_chars: 20
+dedup: true
+output_path: hf_data/prompts/benign/alpaca_benign.jsonl
+sample_path: data/samples/alpaca_sample.jsonl
+sample_n: 5
