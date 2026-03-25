@@ -1,43 +1,73 @@
 # SafeComp-DPO Repo Instructions
 
 ## Purpose
-This repo implements a research pipeline for safe-completion DPO on Llama 3.1 8B-Instruct.
+This repo implements an end-to-end research pipeline for comparing:
 
-The project compares:
 - Baseline Refusal-DPO
 - Experimental SafeComp-DPO
 
-## Current stage
-We are in repository foundation and pilot design.
+on Llama 3.1 8B-Instruct.
 
-Work in this order:
-1. docs and repo rules
-2. schemas
-3. pilot configs
-4. local utilities
-5. pilot pipeline
-6. full data pipeline
-7. BABEL training and eval
+The goal is to build the full system so it runs end to end on dummy data now, and on real data later with minimal changes.
 
-Do not jump to full extraction, generation, or training unless explicitly asked.
+## Current repo state
+The repo has a full mock pipeline through all stages, including evaluation.
 
-## Core workflow
+Implemented stages:
+1. prompt acquisition / ingestion
+2. prompt selection
+3. acceptable-response generation
+4. rejected-response sourcing
+5. response validation
+6. pair construction
+7. DPO dataset assembly
+8. regime-specific training-dataset construction
+9. training
+10. custom model evaluation
+11. standard benchmark evaluation
+
+All stages run end-to-end on mock data. 1033 tests, all passing.
+
+Standard benchmarks implemented and real datasets wired locally:
+- HarmBench (400 prompts, ASR)
+- StrongREJECT (313 prompts, mean score)
+- Do-Not-Answer (939 prompts, percent harmful)
+- XSTest (250 safe / 200 unsafe, ORR + ASR)
+- OR-Bench (1319 prompts, ORR)
+- FalseReject-Test (1187 prompts, compliance rate)
+
+Real datasets live in hf_data/benchmarks/ (gitignored). Mock fallback is
+automatic if a dataset file is absent.
+
+Current missing real backends (all stages structurally ready, seams in place):
+- real generation backend (vllm on BABEL)
+- real rejected-response sourcing backend
+- real training backend (HF Trainer / TRL DPO)
+- real benchmark model backend (vllm on BABEL)
+- real benchmark scoring backend (WildGuard / Llama Guard / StrongREJECT classifier)
+
+## Workflow
 Prefer:
-1. explore
+1. explore only the files needed
 2. plan
 3. implement
 4. verify
 
-For substantial tasks, understand the current files before writing code.
+For substantial tasks:
+- understand the current contracts first
+- do not broadly re-explore the whole repo unless necessary
+- keep changes scoped
+- preserve existing stage boundaries
 
 ## Development principles
-- Pilot first
+- Pilot first, then full pipeline
 - Keep local Windows setup lightweight
 - Move GPU-heavy work to BABEL later
 - Keep code modular and config-driven
 - Preserve provenance at every stage
 - Prefer scripts over notebooks for core pipeline logic
 - Use JSONL for datasets and YAML for configs
+- Keep CLAUDE.md compact and high-signal
 
 ## Canonical prompt categories
 Use exactly:
@@ -55,20 +85,104 @@ Use exactly:
 
 Do not silently rename these.
 
-## Expected responses by category
-- unsafe: hard_refusal, safe_completion, unsafe_compliance
-- dual_use: hard_refusal, safe_completion, unsafe_compliance
-- benign_sensitive: hard_refusal, helpful_answer
-- benign: helpful_answer
-
 ## Core record types
-The repo should revolve around:
+The repo revolves around:
 - PromptRecord
 - ResponseRecord
 - ValidationRecord
 - PreferencePair
+- DPORecord
 
 Prefer explicit enums and explicit metadata.
+
+## Locked v1 pair logic
+Use this as the current source of truth unless explicitly changed.
+
+Shared by both training regimes:
+
+### unsafe
+- chosen = hard_refusal
+- rejected = unsafe_compliance
+- pair_type = baseline_refusal
+
+### benign_sensitive
+- chosen = helpful_answer
+- rejected = hard_refusal
+- pair_type = safe_completion
+
+### benign
+- chosen = helpful_answer
+- rejected = hard_refusal
+- pair_type = safe_completion
+
+Different only on dual_use:
+
+### dual_use for baseline model
+- chosen = hard_refusal
+- rejected = unsafe_compliance
+- pair_type = baseline_refusal
+
+### dual_use for SafeComp model
+- chosen = safe_completion
+- rejected = hard_refusal
+- pair_type = safe_completion
+
+### dual_use for SafeComp model
+- chosen = safe_completion
+- rejected = unsafe_compliance
+- pair_type = safe_completion
+
+## Training-dataset rule
+Do not build final training datasets by global `pair_type` filtering alone.
+
+Final datasets are regime-specific:
+
+- baseline dataset
+- safecomp dataset
+
+Shared-category pairs go into both datasets.
+Only `dual_use` differs between regimes.
+
+Use the regime-specific training-dataset construction stage for this logic.
+
+## Current project direction
+Important current decisions:
+
+- The main SafeComp vs baseline divergence lives in `dual_use`
+- `unsafe_compliance` does not come from acceptable-response generation
+- `unsafe_compliance` comes from a separate rejected-response sourcing stage
+- acceptable-response generation excludes `unsafe_compliance`
+- do not treat older pilot behavior as final design if newer code and configs disagree
+
+## V1 prompt-acquisition policy
+Current v1 prompt target is about 8000 clean prompts.
+
+Category targets:
+- unsafe: about 1800
+- dual_use: about 2600
+- benign_sensitive: about 2000
+- benign: about 1600
+
+Current v1 source policy:
+- unsafe: BeaverTails only
+- benign_sensitive: FalseReject train only
+- benign: Alpaca only
+- dual_use: fully generated in v1
+
+Current exclusions / simplifications:
+- Do not use HH-RLHF in v1 prompt acquisition
+- Do not use BeaverTails confidence / decision-boundary ideas
+- Do not require manual mining and relabeling of dual_use prompts from existing datasets in v1
+
+## Current implementation priorities
+When extending the repo, prioritize this order:
+
+1. keep current pair logic and regime logic correct
+2. add real backends for generation, rejected-response sourcing, training, and evaluation
+3. support real BABEL runs
+4. report results cleanly
+
+Do not rewrite stable stages without a clear reason.
 
 ## Data and storage rules
 - Code, configs, docs, schemas, and tiny samples belong in Git
@@ -94,6 +208,8 @@ Do not add GPU-only dependencies by default:
 - flash-attn
 - full multi-GPU training stack
 
+These belong in the BABEL environment and should be added only when implementing real backends.
+
 ## Coding style
 - Prefer simple readable Python
 - Use type hints
@@ -113,19 +229,11 @@ Before implementing any stage, make the contract explicit:
 Do not rely on hidden assumptions.
 
 ## What to avoid
-- Do not generate large synthetic datasets unless explicitly asked
-- Do not implement training before schemas and pilot configs are stable
+- Do not generate large datasets unless explicitly asked
+- Do not re-explore the whole repo without a reason
 - Do not assume harmful outputs are meant for public release
 - Do not add unnecessary framework complexity
-
-## Immediate priorities
-If asked to help with setup, prioritize:
-1. docs
-2. `pyproject.toml`
-3. schemas
-4. JSONL utilities
-5. pilot configs
-6. CLI stubs
+- Do not rely on global `pair_type` filtering as the final regime-selection logic
 
 ## Reference docs
 Use these first when present:

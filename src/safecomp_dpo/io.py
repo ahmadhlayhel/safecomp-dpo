@@ -12,6 +12,9 @@ from pathlib import Path
 from typing import Any
 
 from safecomp_dpo.schemas import (
+    BenchmarkRecord,
+    DPORecord,
+    EvalRecord,
     PreferencePair,
     PromptRecord,
     ResponseRecord,
@@ -66,3 +69,15 @@ def load_validation_records(path: str | Path) -> list[ValidationRecord]:
 
 def load_preference_pairs(path: str | Path) -> list[PreferencePair]:
     return [PreferencePair.model_validate(r) for r in read_jsonl(path)]
+
+
+def load_dpo_records(path: str | Path) -> list[DPORecord]:
+    return [DPORecord.model_validate(r) for r in read_jsonl(path)]
+
+
+def load_eval_records(path: str | Path) -> list[EvalRecord]:
+    return [EvalRecord.model_validate(r) for r in read_jsonl(path)]
+
+
+def load_benchmark_records(path: str | Path) -> list[BenchmarkRecord]:
+    return [BenchmarkRecord.model_validate(r) for r in read_jsonl(path)]

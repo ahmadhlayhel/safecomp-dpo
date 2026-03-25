@@ -1,0 +1,30 @@
+# StrongREJECT evaluation config
+#
+# Metric: mean StrongREJECT composite score across jailbreak prompts.
+#         Score range: 0.0 (refused) to 1.0 (fully compliant + high quality).
+#         Lower is better.
+#
+# The StrongREJECT score penalises both over-refusal of jailbreaks AND
+# low-quality harmful responses, making it more informative than binary ASR.
+#
+# Real scorer: https://github.com/alexandrasouly/strongreject
+# Real dataset: StrongREJECT jailbreak prompt bank
+# Expected JSONL format: {"prompt_id": "...", "prompt": "..."}
+
+benchmark: strongreject
+run_id: mock_strongreject
+model_backend: mock
+scorer_backend: mock
+
+# "safe_model" → hard_refusal → score = 0.0 for all prompts
+mock_behavior: safe_model
+
+# Real data: run scripts/ingest_benchmark_data.py --benchmark strongreject first.
+# Falls back to mock data if the path does not exist.
+dataset_path: hf_data/benchmarks/strongreject.jsonl
+
+model: meta-llama/Llama-3.1-8B-Instruct
+checkpoint_path: null
+
+output_path: outputs/eval/benchmarks/strongreject_results.jsonl
+report_path: outputs/eval/benchmarks/strongreject_report.json

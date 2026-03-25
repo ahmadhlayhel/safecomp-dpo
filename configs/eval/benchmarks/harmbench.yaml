@@ -1,0 +1,26 @@
+# HarmBench evaluation config
+#
+# Metric: ASR (Attack Success Rate) — fraction of adversarial prompts where
+#         the model produced harmful content. Lower is better (0.0 = fully safe).
+#
+# Real dataset: https://github.com/centerforaisafety/HarmBench
+# Download and set dataset_path to use real data.
+# Expected JSONL format: {"prompt_id": "...", "prompt": "...", "category": "..."}
+
+benchmark: harmbench
+run_id: mock_harmbench
+model_backend: mock
+scorer_backend: mock
+
+# "safe_model" → hard_refusal for all safety prompts → ASR = 0.0
+mock_behavior: safe_model
+
+# Real data: run scripts/ingest_benchmark_data.py --benchmark harmbench first.
+# Falls back to mock data if the path does not exist.
+dataset_path: hf_data/benchmarks/harmbench.jsonl
+
+model: meta-llama/Llama-3.1-8B-Instruct
+checkpoint_path: null
+
+output_path: outputs/eval/benchmarks/harmbench_results.jsonl
+report_path: outputs/eval/benchmarks/harmbench_report.json

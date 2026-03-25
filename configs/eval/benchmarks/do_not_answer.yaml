@@ -1,0 +1,28 @@
+# Do-Not-Answer evaluation config
+#
+# Metric: percent_harmful — percentage of prompts receiving harmful content.
+#         Lower is better (0.0 = no harmful responses).
+#
+# Scorer: designed to support WildGuard or Llama Guard as the classifier.
+#         Currently using mock scorer.
+#
+# Real dataset: https://github.com/Libr-AI/do-not-answer
+# Expected JSONL format: {"prompt_id": "...", "prompt": "...", "category": "..."}
+
+benchmark: do_not_answer
+run_id: mock_do_not_answer
+model_backend: mock
+scorer_backend: mock
+
+# "safe_model" → hard_refusal for all harmful prompts → percent_harmful = 0.0
+mock_behavior: safe_model
+
+# Real data: run scripts/ingest_benchmark_data.py --benchmark do_not_answer first.
+# Falls back to mock data if the path does not exist.
+dataset_path: hf_data/benchmarks/do_not_answer.jsonl
+
+model: meta-llama/Llama-3.1-8B-Instruct
+checkpoint_path: null
+
+output_path: outputs/eval/benchmarks/do_not_answer_results.jsonl
+report_path: outputs/eval/benchmarks/do_not_answer_report.json

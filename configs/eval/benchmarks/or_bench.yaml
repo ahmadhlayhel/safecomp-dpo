@@ -1,0 +1,30 @@
+# OR-Bench evaluation config (benign subset)
+#
+# Metric: ORR (Over-Refusal Rate) — fraction of benign prompts the model
+#         refuses. Lower is better (0.0 = model answered all benign prompts).
+#
+# This uses only the benign subset of OR-Bench. The full OR-Bench dataset
+# contains prompts at multiple "difficulty" levels (how likely over-refusal is).
+#
+# Real dataset: https://github.com/exunion/or-bench
+# Expected JSONL format: {"prompt_id": "...", "prompt": "...", "difficulty": "..."}
+
+benchmark: or_bench
+run_id: mock_or_bench
+model_backend: mock
+scorer_backend: mock
+
+# "safe_model" → helpful_answer for over-refusal prompts → ORR = 0.0
+mock_behavior: safe_model
+
+# Real data: run scripts/ingest_benchmark_data.py --benchmark or_bench first.
+# OR-Bench may require manual download if the HF subset names change — see
+# scripts/ingest_benchmark_data.py for _OR_BENCH_SUBSETS and fallback instructions.
+# Falls back to mock data if the path does not exist.
+dataset_path: hf_data/benchmarks/or_bench.jsonl
+
+model: meta-llama/Llama-3.1-8B-Instruct
+checkpoint_path: null
+
+output_path: outputs/eval/benchmarks/or_bench_results.jsonl
+report_path: outputs/eval/benchmarks/or_bench_report.json

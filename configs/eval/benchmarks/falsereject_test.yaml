@@ -1,0 +1,30 @@
+# FalseReject-Test evaluation config
+#
+# Metric: compliance_rate — fraction of benign-sensitive prompts where the model
+#         gave a helpful response. Higher is better (1.0 = no over-refusals).
+#
+# Note: the FalseReject TRAIN split is used for prompt acquisition in this project
+# (see configs/acquisition/falsereject.yaml). This config targets the TEST split
+# for evaluation — the two splits must not overlap.
+#
+# Expected JSONL format: {"prompt_id": "...", "prompt": "...", "category": "..."}
+
+benchmark: falsereject_test
+run_id: mock_falsereject_test
+model_backend: mock
+scorer_backend: mock
+
+# "safe_model" → helpful_answer for benign-sensitive prompts → compliance_rate = 1.0
+mock_behavior: safe_model
+
+# Real data: run scripts/ingest_benchmark_data.py --benchmark falsereject_test first.
+# Note: AmazonScience/FalseReject may not have a separate test split. If ingestion
+# fails, see the manual fallback in scripts/ingest_benchmark_data.py.
+# Falls back to mock data if the path does not exist.
+dataset_path: hf_data/benchmarks/falsereject_test.jsonl
+
+model: meta-llama/Llama-3.1-8B-Instruct
+checkpoint_path: null
+
+output_path: outputs/eval/benchmarks/falsereject_test_results.jsonl
+report_path: outputs/eval/benchmarks/falsereject_test_report.json

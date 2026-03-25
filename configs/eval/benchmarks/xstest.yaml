@@ -1,0 +1,31 @@
+# XSTest evaluation config
+#
+# Two-split benchmark:
+#   safe split   (250 prompts): safe prompts that may look harmful.
+#       Metric: ORR — fraction incorrectly refused.  Lower is better.
+#   unsafe split (200 prompts): prompts that are actually harmful.
+#       Metric: ASR — fraction where harmful content was produced.  Lower is better.
+#
+# The split field ("safe"/"unsafe") is stored on each BenchmarkRecord.
+# compute_metrics() reports both splits separately.
+#
+# Real dataset: https://github.com/paul-rottger/xstest
+# Expected JSONL format: {"prompt_id": "...", "prompt": "...", "split": "safe"|"unsafe"}
+
+benchmark: xstest
+run_id: mock_xstest
+model_backend: mock
+scorer_backend: mock
+
+# "safe_model" → helpful_answer for safe split (ORR=0), hard_refusal for unsafe (ASR=0)
+mock_behavior: safe_model
+
+# Real data: run scripts/ingest_benchmark_data.py --benchmark xstest first.
+# Falls back to mock data if the path does not exist.
+dataset_path: hf_data/benchmarks/xstest.jsonl
+
+model: meta-llama/Llama-3.1-8B-Instruct
+checkpoint_path: null
+
+output_path: outputs/eval/benchmarks/xstest_results.jsonl
+report_path: outputs/eval/benchmarks/xstest_report.json

@@ -105,3 +105,66 @@ class PreferencePair(BaseModel):
     pair_type: PairType
     created_at: datetime | None = None
     metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class DPORecord(BaseModel):
+    """Flat record assembled from pipeline artifacts, ready for DPO training."""
+
+    pair_id: str
+    prompt_id: str
+    category: PromptCategory
+    pair_type: PairType
+    prompt: str
+    chosen: str
+    rejected: str
+    chosen_id: str
+    rejected_id: str
+
+
+class BenchmarkRecord(BaseModel):
+    """Per-example result from a standard benchmark evaluation run.
+
+    is_compliant: True if the model followed the prompt's request.
+    Interpretation depends on benchmark type:
+      safety benchmarks   (HarmBench, StrongREJECT, DoNotAnswer):
+          is_compliant=True  means harmful content was produced  (BAD)
+      over-refusal benchmarks (XSTest safe, OR-Bench, FalseRejectTest):
+          is_compliant=True  means model gave a helpful response  (GOOD)
+
+    score: continuous score used by StrongREJECT (0.0–1.0); None for all
+           other benchmarks that only need binary is_compliant.
+
+    record_id convention: {prompt_id}__{run_id}__bench
+    Example:              harmbench_001__mock_run__bench
+    """
+
+    record_id: str
+    benchmark: str
+    split: str | None = None          # "safe"/"unsafe" for XSTest; None otherwise
+    prompt: str
+    response: str
+    is_compliant: bool
+    score: float | None = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class EvalRecord(BaseModel):
+    """Per-example evaluation result for a single model run.
+
+    Captures the model response and judge label for one (prompt, run) pair.
+    Used to compute category-level metrics via aggregate_metrics().
+
+    eval_id convention: {prompt_id}__{run_id}__eval
+    Example:            u_001__mock_safecomp__eval
+
+    run_id should be a clean alphanumeric slug (no __ separators).
+    """
+
+    eval_id: str
+    prompt_id: str
+    run_id: str
+    category: PromptCategory
+    prompt: str
+    response: str
+    judge_label: ResponseType
+    metadata: dict[str, Any] = Field(default_factory=dict)
