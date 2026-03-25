@@ -15,6 +15,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
 
 from train_dpo import (
     MockTrainingBackend,
+    TRLDPOBackend,
+    dpo_records_to_hf_dataset,
     filter_examples,
     get_backend,
     run_training,
@@ -508,3 +510,291 @@ def test_load_dpo_records_and_train(tmp_path):
     report = run_training(loaded, config, MockTrainingBackend(), "c.yaml")
     assert report["n_examples_filtered_in"] == 3
     assert report["mock_loss"] is not None
+
+
+# ---------------------------------------------------------------------------
+# TRLDPOBackend — registration and contract (no GPU required)
+# ---------------------------------------------------------------------------
+
+
+def test_trl_backend_registered():
+    backend = get_backend("trl_dpo")
+    assert isinstance(backend, TRLDPOBackend)
+    assert backend.name == "trl_dpo"
+
+
+def test_trl_backend_name_attribute():
+    assert TRLDPOBackend.name == "trl_dpo"
+    assert TRLDPOBackend().name == "trl_dpo"
+
+
+def test_trl_backend_raises_import_error_without_heavy_deps(monkeypatch):
+    """When torch/trl are absent, train() raises ImportError with install hint."""
+    import builtins
+
+    real_import = builtins.__import__
+
+    def _mock_import(name: str, *args: Any, **kwargs: Any) -> Any:
+        if name in ("trl", "torch"):
+            raise ImportError(f"No module named '{name}'")
+        return real_import(name, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, "__import__", _mock_import)
+    with pytest.raises(ImportError, match="TRL backend requires"):
+        TRLDPOBackend().train(_mixed_examples(), _BASE_CONFIG)
+
+
+# ---------------------------------------------------------------------------
+# dpo_records_to_hf_dataset — pure conversion (datasets installed locally)
+# ---------------------------------------------------------------------------
+
+
+class TestDPORecordsToHFDataset:
+    def test_returns_dataset_type(self):
+        from datasets import Dataset  # type: ignore[import]
+
+        ds = dpo_records_to_hf_dataset(_mixed_examples())
+        assert isinstance(ds, Dataset)
+
+    def test_has_required_trl_columns(self):
+        ds = dpo_records_to_hf_dataset(_mixed_examples())
+        for col in ("prompt", "chosen", "rejected"):
+            assert col in ds.column_names, f"Missing required TRL column: {col!r}"
+
+    def test_has_provenance_columns(self):
+        ds = dpo_records_to_hf_dataset(_mixed_examples())
+        for col in ("pair_id", "category", "pair_type"):
+            assert col in ds.column_names, f"Missing provenance column: {col!r}"
+
+    def test_row_count_matches_input(self):
+        examples = _mixed_examples()
+        assert len(dpo_records_to_hf_dataset(examples)) == len(examples)
+
+    def test_values_match_records(self):
+        examples = _mixed_examples()
+        ds = dpo_records_to_hf_dataset(examples)
+        for i, rec in enumerate(examples):
+            assert ds[i]["prompt"] == rec.prompt
+            assert ds[i]["chosen"] == rec.chosen
+            assert ds[i]["rejected"] == rec.rejected
+            assert ds[i]["category"] == rec.category.value
+            assert ds[i]["pair_type"] == rec.pair_type.value
+            assert ds[i]["pair_id"] == rec.pair_id
+
+    def test_empty_records_returns_empty_dataset(self):
+        ds = dpo_records_to_hf_dataset([])
+        assert len(ds) == 0
+
+    def test_category_values_are_strings(self):
+        ds = dpo_records_to_hf_dataset(_mixed_examples())
+        for val in ds["category"]:
+            assert isinstance(val, str)
+
+    def test_pair_type_values_are_strings(self):
+        ds = dpo_records_to_hf_dataset(_mixed_examples())
+        for val in ds["pair_type"]:
+            assert isinstance(val, str)
+
+
+# ---------------------------------------------------------------------------
+# write_outputs — final_loss key in checkpoint marker
+# ---------------------------------------------------------------------------
+
+
+def test_write_outputs_checkpoint_has_final_loss_key(tmp_path):
+    """Checkpoint marker includes final_loss (real backend; may be None for mock)."""
+    report = {
+        "regime": "safecomp", "backend": "trl_dpo",
+        "n_examples_filtered_in": 2, "mock_loss": None, "final_loss": 0.42,
+    }
+    checkpoint_dir = tmp_path / "checkpoint_trl"
+    write_outputs(report, None, checkpoint_dir)
+    with open(checkpoint_dir / "training_complete.json") as f:
+        content = json.load(f)
+    assert content["final_loss"] == 0.42
+
+
+def test_write_outputs_mock_backend_final_loss_is_none(tmp_path):
+    """Mock backend report has no final_loss — checkpoint stores None."""
+    report = {
+        "regime": "baseline", "backend": "mock",
+        "n_examples_filtered_in": 3, "mock_loss": 0.25,
+    }
+    checkpoint_dir = tmp_path / "checkpoint_mock"
+    write_outputs(report, None, checkpoint_dir)
+    with open(checkpoint_dir / "training_complete.json") as f:
+        content = json.load(f)
+    assert content["mock_loss"] == 0.25
+    assert content["final_loss"] is None
+
+
+# ---------------------------------------------------------------------------
+# BABEL config tests — load and validate required keys
+# ---------------------------------------------------------------------------
+
+
+class TestBABELConfigs:
+    _REQUIRED_KEYS = {
+        "regime", "model", "backend",
+        "num_train_epochs", "per_device_train_batch_size",
+        "learning_rate", "lr_scheduler_type", "warmup_ratio",
+        "beta", "loss_type", "use_lora", "checkpoint_dir",
+        "gradient_checkpointing", "optim",
+    }
+
+    def _load(self, name: str) -> dict[str, Any]:
+        path = _REPO_ROOT / "configs" / "training" / f"{name}.yaml"
+        with open(path) as f:
+            return yaml.safe_load(f)
+
+    def test_baseline_babel_loads(self):
+        cfg = self._load("baseline_babel")
+        assert isinstance(cfg, dict)
+
+    def test_safecomp_babel_loads(self):
+        cfg = self._load("safecomp_babel")
+        assert isinstance(cfg, dict)
+
+    def test_baseline_babel_required_keys(self):
+        cfg = self._load("baseline_babel")
+        for key in self._REQUIRED_KEYS:
+            assert key in cfg, f"Missing key {key!r} in baseline_babel.yaml"
+
+    def test_safecomp_babel_required_keys(self):
+        cfg = self._load("safecomp_babel")
+        for key in self._REQUIRED_KEYS:
+            assert key in cfg, f"Missing key {key!r} in safecomp_babel.yaml"
+
+    def test_baseline_babel_backend_is_trl_dpo(self):
+        assert self._load("baseline_babel")["backend"] == "trl_dpo"
+
+    def test_safecomp_babel_backend_is_trl_dpo(self):
+        assert self._load("safecomp_babel")["backend"] == "trl_dpo"
+
+    def test_baseline_babel_regime(self):
+        assert self._load("baseline_babel")["regime"] == "baseline"
+
+    def test_safecomp_babel_regime(self):
+        assert self._load("safecomp_babel")["regime"] == "safecomp"
+
+    def test_babel_configs_have_distinct_regimes(self):
+        baseline = self._load("baseline_babel")
+        safecomp = self._load("safecomp_babel")
+        assert baseline["regime"] != safecomp["regime"]
+
+    def test_babel_configs_have_distinct_checkpoint_dirs(self):
+        baseline = self._load("baseline_babel")
+        safecomp = self._load("safecomp_babel")
+        assert baseline["checkpoint_dir"] != safecomp["checkpoint_dir"]
+
+    def test_babel_configs_use_lora(self):
+        for name in ("baseline_babel", "safecomp_babel"):
+            cfg = self._load(name)
+            assert cfg.get("use_lora") is True, f"{name}: use_lora should be True"
+            assert "lora_r" in cfg, f"{name}: missing lora_r"
+            assert "lora_alpha" in cfg, f"{name}: missing lora_alpha"
+
+    def test_babel_configs_lora_alpha_equals_r(self):
+        """alpha = r gives scaling factor 1.0 — standard for alignment work."""
+        for name in ("baseline_babel", "safecomp_babel"):
+            cfg = self._load(name)
+            assert cfg["lora_alpha"] == cfg["lora_r"], (
+                f"{name}: lora_alpha should equal lora_r (scaling factor 1.0)"
+            )
+
+    def test_babel_configs_lora_target_modules_all_linear(self):
+        """all-linear covers attention + MLP layers for broader DPO coverage."""
+        for name in ("baseline_babel", "safecomp_babel"):
+            cfg = self._load(name)
+            assert cfg.get("lora_target_modules") == "all-linear", (
+                f"{name}: lora_target_modules should be 'all-linear'"
+            )
+
+    def test_babel_configs_modules_to_save(self):
+        """lm_head and embed_tokens should be saved alongside the LoRA adapter."""
+        for name in ("baseline_babel", "safecomp_babel"):
+            cfg = self._load(name)
+            saved = cfg.get("modules_to_save", [])
+            assert "lm_head" in saved, f"{name}: lm_head should be in modules_to_save"
+            assert "embed_tokens" in saved, f"{name}: embed_tokens should be in modules_to_save"
+
+    def test_babel_configs_use_4bit(self):
+        for name in ("baseline_babel", "safecomp_babel"):
+            cfg = self._load(name)
+            assert cfg.get("use_4bit") is True, f"{name}: use_4bit should be True"
+
+    def test_babel_configs_bf16(self):
+        for name in ("baseline_babel", "safecomp_babel"):
+            cfg = self._load(name)
+            assert cfg.get("bf16") is True, f"{name}: bf16 should be True"
+
+    def test_babel_configs_gradient_checkpointing(self):
+        for name in ("baseline_babel", "safecomp_babel"):
+            cfg = self._load(name)
+            assert cfg.get("gradient_checkpointing") is True, (
+                f"{name}: gradient_checkpointing should be True"
+            )
+
+    def test_babel_configs_cosine_scheduler(self):
+        for name in ("baseline_babel", "safecomp_babel"):
+            cfg = self._load(name)
+            assert cfg.get("lr_scheduler_type") == "cosine", (
+                f"{name}: lr_scheduler_type should be 'cosine'"
+            )
+
+    def test_babel_configs_warmup_ratio(self):
+        for name in ("baseline_babel", "safecomp_babel"):
+            cfg = self._load(name)
+            assert cfg.get("warmup_ratio") == pytest.approx(0.1), (
+                f"{name}: warmup_ratio should be 0.1"
+            )
+
+    def test_babel_configs_paged_adamw(self):
+        for name in ("baseline_babel", "safecomp_babel"):
+            cfg = self._load(name)
+            assert cfg.get("optim") == "paged_adamw_8bit", (
+                f"{name}: optim should be 'paged_adamw_8bit'"
+            )
+
+    def test_babel_configs_loss_type_sigmoid(self):
+        for name in ("baseline_babel", "safecomp_babel"):
+            cfg = self._load(name)
+            assert cfg.get("loss_type") == "sigmoid", (
+                f"{name}: loss_type should be 'sigmoid'"
+            )
+
+    def test_babel_configs_learning_rate(self):
+        for name in ("baseline_babel", "safecomp_babel"):
+            cfg = self._load(name)
+            assert cfg.get("learning_rate") == pytest.approx(5e-6), (
+                f"{name}: learning_rate should be 5e-6 for QLoRA DPO"
+            )
+
+    def test_babel_configs_num_epochs(self):
+        for name in ("baseline_babel", "safecomp_babel"):
+            cfg = self._load(name)
+            assert cfg.get("num_train_epochs") >= 2, (
+                f"{name}: num_train_epochs should be >= 2 for production training"
+            )
+
+    def test_babel_configs_identical_hyperparameters(self):
+        """Baseline and safecomp should share all hyperparameters; only paths/regime differ."""
+        shared_keys = [
+            "model", "backend", "num_train_epochs", "per_device_train_batch_size",
+            "gradient_accumulation_steps", "learning_rate", "lr_scheduler_type",
+            "warmup_ratio", "beta", "loss_type", "max_length", "max_prompt_length",
+            "bf16", "gradient_checkpointing", "optim",
+            "use_lora", "lora_r", "lora_alpha", "lora_target_modules", "lora_dropout",
+            "use_4bit",
+        ]
+        baseline = self._load("baseline_babel")
+        safecomp = self._load("safecomp_babel")
+        for key in shared_keys:
+            assert baseline.get(key) == safecomp.get(key), (
+                f"Key {key!r} differs: baseline={baseline.get(key)!r}, safecomp={safecomp.get(key)!r}"
+            )
+
+    def test_babel_configs_model_is_llama(self):
+        for name in ("baseline_babel", "safecomp_babel"):
+            cfg = self._load(name)
+            assert "Llama" in cfg["model"], f"{name}: model should be a Llama variant"

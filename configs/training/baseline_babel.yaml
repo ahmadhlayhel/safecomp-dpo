@@ -1,0 +1,68 @@
+# Baseline Refusal-DPO training config — BABEL (real TRL backend)
+#
+# Trains the baseline model using TRL DPOTrainer on the pre-filtered baseline
+# dataset assembled by build_training_dataset.py.
+#
+# Regime: baseline
+#   Pair logic: unsafe → (hard_refusal > unsafe_compliance)
+#               dual_use → (hard_refusal > unsafe_compliance)   [baseline treatment]
+#               benign_sensitive → (helpful_answer > hard_refusal)
+#               benign → (helpful_answer > hard_refusal)
+#
+# The input dataset is already regime-filtered by build_training_dataset.py.
+# pair_types and categories are empty — no additional filtering needed here.
+#
+# Requirements (BABEL):
+#   pip install trl transformers accelerate torch peft bitsandbytes
+#
+# Usage (BABEL):
+#   python scripts/train_dpo.py \
+#       --config configs/training/baseline_babel.yaml \
+#       --dataset hf_data/dpo/baseline_dpo_dataset.jsonl
+
+regime: baseline
+description: "Baseline Refusal-DPO: prefers hard refusals for unsafe and dual_use prompts"
+model: meta-llama/Llama-3.1-8B-Instruct
+backend: trl_dpo
+
+# No additional filtering: dataset is pre-filtered by build_training_dataset.py.
+pair_types: []
+categories: []
+
+# dataset_path: specify at run time via --dataset, or uncomment below.
+# dataset_path: hf_data/dpo/baseline_dpo_dataset.jsonl
+
+# --- Training hyperparameters ---
+num_train_epochs: 3
+per_device_train_batch_size: 4
+gradient_accumulation_steps: 4       # effective batch size = 16
+learning_rate: 5.0e-6                # appropriate for QLoRA + LoRA adapters
+lr_scheduler_type: cosine
+warmup_ratio: 0.1
+beta: 0.1                            # DPO temperature
+loss_type: sigmoid                   # vanilla DPO loss (Rafailov et al. 2023)
+max_length: 1024
+max_prompt_length: 512
+logging_steps: 10
+save_strategy: epoch
+bf16: true
+gradient_checkpointing: true         # required for memory on 8B + 4-bit
+optim: paged_adamw_8bit              # QLoRA paper recommendation; reduces optimizer state memory
+
+# --- LoRA (PEFT) ---
+use_lora: true
+lora_r: 16
+lora_alpha: 16                       # alpha = r → scaling factor 1.0 (standard in alignment work)
+lora_target_modules: all-linear      # attention + MLP layers; requires PEFT >= 0.7
+lora_dropout: 0.05
+modules_to_save:                     # save full-weight copies alongside LoRA adapter
+  - lm_head
+  - embed_tokens
+
+# --- 4-bit QLoRA (bitsandbytes) ---
+use_4bit: true
+
+# --- Output paths ---
+output_dir: outputs/training/baseline_babel
+report_path: outputs/training/baseline_babel/training_report.json
+checkpoint_dir: outputs/training/baseline_babel/checkpoint

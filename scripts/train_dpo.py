@@ -22,10 +22,11 @@ Example filter
   pair_types:  list of PairType values to include  (empty = no filter)
   categories:  list of PromptCategory values to include (empty = no filter)
 
-Backend
--------
-  mock  — deterministic mock; fully runnable without GPU or model weights
-  (real backend interface provided; real implementation deferred to BABEL)
+Backends
+--------
+  mock     — deterministic mock; fully runnable without GPU or model weights
+  trl_dpo  — real TRL DPOTrainer backend; requires GPU + BABEL environment
+             (pip install trl transformers accelerate torch; optionally peft bitsandbytes)
 
 Outputs
 -------
@@ -35,8 +36,15 @@ Outputs
 
 Usage
 -----
+    # Mock backend (local dev):
     python scripts/train_dpo.py --config configs/training/safecomp.yaml \\
         --dataset hf_data/dpo/full_dpo_dataset.jsonl
+
+    # Real TRL backend (BABEL):
+    python scripts/train_dpo.py --config configs/training/safecomp_babel.yaml \\
+        --dataset hf_data/dpo/safecomp_dpo_dataset.jsonl
+
+    # Dry-run (filter only, no training):
     python scripts/train_dpo.py --config configs/training/baseline.yaml \\
         --dataset hf_data/dpo/full_dpo_dataset.jsonl --dry-run
 """
@@ -117,12 +125,229 @@ class MockTrainingBackend:
 
 
 # ---------------------------------------------------------------------------
+# Dataset conversion helper (exported — testable without TRL)
+# ---------------------------------------------------------------------------
+
+
+def dpo_records_to_hf_dataset(records: list[DPORecord]) -> Any:
+    """Convert DPORecord list to a HuggingFace Dataset for TRL DPOTrainer.
+
+    Columns required by TRL: ``prompt``, ``chosen``, ``rejected``.
+    Provenance columns included: ``pair_id``, ``category``, ``pair_type``.
+
+    Args:
+        records: DPO training examples (may be empty).
+
+    Returns:
+        ``datasets.Dataset`` with the columns above.
+
+    Requires:
+        ``pip install datasets``
+    """
+    from datasets import Dataset  # type: ignore[import]
+
+    return Dataset.from_dict(
+        {
+            "prompt":    [r.prompt for r in records],
+            "chosen":    [r.chosen for r in records],
+            "rejected":  [r.rejected for r in records],
+            "pair_id":   [r.pair_id for r in records],
+            "category":  [r.category.value for r in records],
+            "pair_type": [r.pair_type.value for r in records],
+        }
+    )
+
+
+# ---------------------------------------------------------------------------
+# Real TRL backend (BABEL only)
+# ---------------------------------------------------------------------------
+
+
+class TRLDPOBackend:
+    """Real DPO training backend using TRL's DPOTrainer.
+
+    Designed for GPU execution on BABEL. Heavy dependencies (trl, transformers,
+    torch, accelerate) are imported lazily inside ``train()`` so that the module
+    loads without them on dev machines. Optional: peft (LoRA) and bitsandbytes
+    (4-bit quantization).
+
+    Config keys consumed (beyond the shared keys handled by run_training):
+        model                        HuggingFace model path or ID
+        checkpoint_dir               where to save the trained checkpoint
+        num_train_epochs             default 1  (BABEL configs use 3)
+        per_device_train_batch_size  default 4
+        gradient_accumulation_steps  default 4  (effective batch = 16)
+        learning_rate                default 5e-6  (appropriate for QLoRA + LoRA)
+        lr_scheduler_type            default "cosine"
+        warmup_ratio                 default 0.1
+        beta                         DPO temperature (default 0.1)
+        loss_type                    DPO loss variant (default "sigmoid" = vanilla DPO)
+        max_length                   default 1024
+        max_prompt_length            default 512
+        logging_steps                default 10
+        save_strategy                default "epoch"
+        bf16                         default True
+        gradient_checkpointing       default True  (required for memory on 8B + 4-bit)
+        optim                        default "paged_adamw_8bit"  (QLoRA paper recommendation)
+        use_4bit                     enable bitsandbytes 4-bit QLoRA (default False)
+        use_lora                     enable PEFT LoRA (default False)
+        lora_r                       LoRA rank (default 16)
+        lora_alpha                   LoRA alpha (default 16; alpha=r gives scaling factor 1.0)
+        lora_target_modules          module names or "all-linear" (default "all-linear")
+        lora_dropout                 default 0.05
+        modules_to_save              list of full-weight modules to save with adapter
+                                     (default None; recommended: ["lm_head","embed_tokens"])
+    """
+
+    name: str = "trl_dpo"
+
+    def train(
+        self,
+        examples: list[DPORecord],
+        config: dict[str, Any],
+    ) -> dict[str, Any]:
+        # --- Import heavy deps (BABEL-only) ---
+        try:
+            import torch  # noqa: F401
+            from transformers import AutoModelForCausalLM, AutoTokenizer
+            from trl import DPOConfig, DPOTrainer
+        except ImportError as e:
+            raise ImportError(
+                "TRL backend requires: trl transformers torch accelerate\n"
+                "  On BABEL: pip install trl transformers accelerate torch\n"
+                "  Optional: pip install peft bitsandbytes\n"
+                f"  Missing: {e}"
+            ) from e
+
+        import inspect
+
+        import torch
+
+        model_name: str = config.get("model", "meta-llama/Llama-3.1-8B-Instruct")
+        checkpoint_dir: str = config.get("checkpoint_dir", "outputs/training/trl_dpo")
+
+        # --- Optional: 4-bit QLoRA via bitsandbytes ---
+        bnb_config = None
+        if config.get("use_4bit", False):
+            try:
+                from transformers import BitsAndBytesConfig  # type: ignore[import]
+
+                bnb_config = BitsAndBytesConfig(
+                    load_in_4bit=True,
+                    bnb_4bit_quant_type="nf4",
+                    bnb_4bit_compute_dtype=torch.bfloat16,
+                    bnb_4bit_use_double_quant=True,
+                )
+            except ImportError:
+                print(
+                    "WARNING: bitsandbytes not available; "
+                    "loading in full precision (use_4bit ignored).",
+                    file=sys.stderr,
+                )
+
+        # --- Load tokenizer ---
+        tokenizer = AutoTokenizer.from_pretrained(model_name)
+        if tokenizer.pad_token is None:
+            tokenizer.pad_token = tokenizer.eos_token
+
+        # --- Load model ---
+        model_kwargs: dict[str, Any] = {"torch_dtype": torch.bfloat16}
+        if bnb_config is not None:
+            model_kwargs["quantization_config"] = bnb_config
+            model_kwargs["device_map"] = "auto"
+
+        model = AutoModelForCausalLM.from_pretrained(model_name, **model_kwargs)
+
+        # --- Optional: LoRA via PEFT ---
+        if config.get("use_lora", False):
+            try:
+                from peft import LoraConfig, TaskType, get_peft_model  # type: ignore[import]
+
+                # modules_to_save preserves full-weight copies of lm_head and
+                # embed_tokens alongside the LoRA adapter (important for QLoRA).
+                modules_to_save = config.get("modules_to_save", None)
+
+                lora_cfg = LoraConfig(
+                    r=config.get("lora_r", 16),
+                    lora_alpha=config.get("lora_alpha", 16),  # alpha=r → scaling factor 1.0
+                    target_modules=config.get("lora_target_modules", "all-linear"),
+                    lora_dropout=config.get("lora_dropout", 0.05),
+                    bias="none",
+                    task_type=TaskType.CAUSAL_LM,
+                    modules_to_save=modules_to_save,
+                )
+                model = get_peft_model(model, lora_cfg)
+                model.print_trainable_parameters()
+            except ImportError:
+                print(
+                    "WARNING: peft not available; LoRA disabled (use_lora ignored).",
+                    file=sys.stderr,
+                )
+
+        # --- Gradient checkpointing (use_reentrant=False required for 4-bit compat) ---
+        if config.get("gradient_checkpointing", True):
+            model.gradient_checkpointing_enable(
+                gradient_checkpointing_kwargs={"use_reentrant": False}
+            )
+
+        # --- Build HF Dataset ---
+        dataset = dpo_records_to_hf_dataset(examples)
+
+        # --- DPO training arguments ---
+        dpo_args = DPOConfig(
+            output_dir=checkpoint_dir,
+            num_train_epochs=int(config.get("num_train_epochs", 1)),
+            per_device_train_batch_size=int(config.get("per_device_train_batch_size", 4)),
+            gradient_accumulation_steps=int(config.get("gradient_accumulation_steps", 4)),
+            learning_rate=float(config.get("learning_rate", 5e-6)),
+            lr_scheduler_type=config.get("lr_scheduler_type", "cosine"),
+            warmup_ratio=float(config.get("warmup_ratio", 0.1)),
+            beta=float(config.get("beta", 0.1)),
+            loss_type=config.get("loss_type", "sigmoid"),
+            max_length=int(config.get("max_length", 1024)),
+            max_prompt_length=int(config.get("max_prompt_length", 512)),
+            logging_steps=int(config.get("logging_steps", 10)),
+            save_strategy=config.get("save_strategy", "epoch"),
+            bf16=bool(config.get("bf16", True)),
+            gradient_checkpointing=bool(config.get("gradient_checkpointing", True)),
+            optim=config.get("optim", "paged_adamw_8bit"),
+            remove_unused_columns=False,
+        )
+
+        # --- TRL version-compatible trainer construction ---
+        # TRL >= 0.9 renamed `tokenizer` → `processing_class`; support both.
+        trainer_params = inspect.signature(DPOTrainer.__init__).parameters
+        tok_kwarg = "processing_class" if "processing_class" in trainer_params else "tokenizer"
+
+        trainer = DPOTrainer(
+            model=model,
+            args=dpo_args,
+            train_dataset=dataset,
+            **{tok_kwarg: tokenizer},
+        )
+
+        # --- Train ---
+        train_result = trainer.train()
+        trainer.save_model(checkpoint_dir)
+
+        metrics = getattr(train_result, "metrics", {}) or {}
+        return {
+            "backend": self.name,
+            "n_examples": len(examples),
+            "final_loss": getattr(train_result, "training_loss", None),
+            "train_runtime": metrics.get("train_runtime"),
+            "train_samples_per_second": metrics.get("train_samples_per_second"),
+        }
+
+
+# ---------------------------------------------------------------------------
 # Backend registry
 # ---------------------------------------------------------------------------
 
 
 _BACKENDS: dict[str, type] = {
     "mock": MockTrainingBackend,
+    "trl_dpo": TRLDPOBackend,
 }
 
 
@@ -256,6 +481,7 @@ def write_outputs(
                     "backend": report["backend"],
                     "n_examples": report["n_examples_filtered_in"],
                     "mock_loss": report.get("mock_loss"),
+                    "final_loss": report.get("final_loss"),
                 },
                 f,
                 indent=2,
