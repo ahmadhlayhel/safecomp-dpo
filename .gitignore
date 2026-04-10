@@ -29,4 +29,6 @@ hf_data/**
 !hf_data/responses/
 !hf_data/responses/dual_use/
 !hf_data/responses/dual_use/dualuse_response_records.jsonl
+!hf_data/responses/hard_refusal_responses.jsonl
+!hf_data/responses/helpful_answer_responses.jsonl
 *.egg-info/
