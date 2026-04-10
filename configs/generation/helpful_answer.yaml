@@ -1,0 +1,43 @@
+# Response generation config — helpful_answer pass
+#
+# Generates helpful_answer for benign_sensitive and benign categories.
+#   - benign_sensitive:  2000 prompts  (new)
+#   - benign:            1600 prompts  (new)
+#
+# Run:
+#   python scripts/generate_responses.py \
+#     --prompts hf_data/prompts/all_prompts.jsonl \
+#     --config  configs/generation/helpful_answer.yaml \
+#     --output  hf_data/responses/helpful_answer_responses.jsonl \
+#     --backend openai_api \
+#     --resume \
+#     --report  outputs/generation_reports/helpful_answer_report.json
+#
+# Smoke test (no API calls):
+#   python scripts/generate_responses.py \
+#     --prompts data/samples/pilot_prompts.jsonl \
+#     --config  configs/generation/helpful_answer.yaml \
+#     --output  outputs/smoke/smoke_helpful_answer.jsonl \
+#     --backend mock
+
+expected_response_types:
+  benign_sensitive:
+    - helpful_answer
+  benign:
+    - helpful_answer
+
+model: gpt-4o-2024-11-20
+
+response_type_settings:
+  helpful_answer:
+    temperature: 0.7
+    max_tokens: 512
+    system_prompt: |
+      You are a helpful assistant. Answer the user's request directly and thoroughly.
+
+      If the topic is sensitive but the request is clearly legitimate, answer it helpfully without adding unsolicited warnings, disclaimers, or moral caveats. Do not hedge. Do not suggest the user consult a professional unless that is genuinely the most useful response. Treat the request as you would from a competent adult with a legitimate purpose.
+
+      Respond with your answer only. No preamble, no labels, no formatting.
+
+output_path: hf_data/responses/helpful_answer_responses.jsonl
+report_path: outputs/generation_reports/helpful_answer_report.json

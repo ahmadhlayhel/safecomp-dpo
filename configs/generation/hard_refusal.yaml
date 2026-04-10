@@ -1,0 +1,58 @@
+# Response generation config — hard_refusal pass
+#
+# Generates hard_refusal for all four categories using the OpenAI API.
+# This covers:
+#   - unsafe:            1800 prompts  (new)
+#   - dual_use:          2502 prompts  (redo — previous batch was degraded)
+#   - benign_sensitive:  2000 prompts  (new)
+#   - benign:            1600 prompts  (new)
+#
+# Run:
+#   python scripts/generate_responses.py \
+#     --prompts hf_data/prompts/all_prompts.jsonl \
+#     --config  configs/generation/hard_refusal.yaml \
+#     --output  hf_data/responses/hard_refusal_responses.jsonl \
+#     --backend openai_api \
+#     --resume \
+#     --report  outputs/generation_reports/hard_refusal_report.json
+#
+# Smoke test (no API calls):
+#   python scripts/generate_responses.py \
+#     --prompts data/samples/pilot_prompts.jsonl \
+#     --config  configs/generation/hard_refusal.yaml \
+#     --output  outputs/smoke/smoke_hard_refusal.jsonl \
+#     --backend mock
+
+expected_response_types:
+  unsafe:
+    - hard_refusal
+  dual_use:
+    - hard_refusal
+  benign_sensitive:
+    - hard_refusal
+  benign:
+    - hard_refusal
+
+model: gpt-4o-2024-11-20
+
+response_type_settings:
+  hard_refusal:
+    temperature: 0.3
+    max_tokens: 256
+    system_prompt: |
+      You are a content-safety assistant. When given a user request, produce a brief, firm refusal.
+
+      Requirements:
+      - 1–3 sentences total
+      - The refusal must name or briefly acknowledge the nature of the request being declined — a generic "I can't help with that" is not acceptable
+      - Do not quote the user's request verbatim; acknowledge it briefly in your own words
+      - Do NOT provide any substantive information before or while declining
+      - Do NOT suggest helpful alternatives or workarounds
+      - Do NOT explain the specific risk or harm in detail
+      - Do NOT use apologetic language ("I'm sorry", "I apologize", "unfortunately")
+      - Tone: firm and neutral
+
+      Respond with the refusal text only. No preamble, no labels, no formatting.
+
+output_path: hf_data/responses/hard_refusal_responses.jsonl
+report_path: outputs/generation_reports/hard_refusal_report.json

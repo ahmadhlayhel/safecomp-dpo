@@ -11,7 +11,7 @@ on Llama 3.1 8B-Instruct.
 The goal is to build the full system so it runs end to end on dummy data now, and on real data later with minimal changes.
 
 ## Current repo state
-The repo has a full mock pipeline through all stages, including evaluation.
+The repo has a full mock pipeline through all stages, including evaluation, plus partially real backend/data layers in some places.
 
 Implemented stages:
 1. prompt acquisition / ingestion
@@ -26,7 +26,7 @@ Implemented stages:
 10. custom model evaluation
 11. standard benchmark evaluation
 
-All stages run end-to-end on mock data. 1033 tests, all passing.
+All stages run end-to-end on mock data. 1071 tests, all passing.
 
 Standard benchmarks implemented and real datasets wired locally:
 - HarmBench (400 prompts, ASR)
@@ -36,15 +36,17 @@ Standard benchmarks implemented and real datasets wired locally:
 - OR-Bench (1319 prompts, ORR)
 - FalseReject-Test (1187 prompts, compliance rate)
 
-Real datasets live in hf_data/benchmarks/ (gitignored). Mock fallback is
-automatic if a dataset file is absent.
+Real datasets live in `hf_data/benchmarks/` (gitignored). Mock fallback is automatic if a dataset file is absent.
 
-Current missing real backends (all stages structurally ready, seams in place):
+Current missing / not-yet-runtime-validated real backends:
 - real generation backend (vllm on BABEL)
 - real rejected-response sourcing backend
-- real training backend (HF Trainer / TRL DPO)
 - real benchmark model backend (vllm on BABEL)
 - real benchmark scoring backend (WildGuard / Llama Guard / StrongREJECT classifier)
+
+Training:
+- the TRL / QLoRA training backend is implemented
+- it still needs real BABEL/runtime validation
 
 ## Workflow
 Prefer:
@@ -67,7 +69,7 @@ For substantial tasks:
 - Preserve provenance at every stage
 - Prefer scripts over notebooks for core pipeline logic
 - Use JSONL for datasets and YAML for configs
-- Keep CLAUDE.md compact and high-signal
+- Keep `CLAUDE.md` compact and high-signal
 
 ## Canonical prompt categories
 Use exactly:
@@ -150,8 +152,9 @@ Important current decisions:
 
 - The main SafeComp vs baseline divergence lives in `dual_use`
 - `unsafe_compliance` does not come from acceptable-response generation
-- `unsafe_compliance` comes from a separate rejected-response sourcing stage
 - acceptable-response generation excludes `unsafe_compliance`
+- `unsafe_compliance` is expected to come from a separate rejected-response sourcing stage
+- the exact unsafe-compliance sourcing technique is still open unless explicitly locked later
 - do not treat older pilot behavior as final design if newer code and configs disagree
 
 ## V1 prompt-acquisition policy
@@ -167,12 +170,26 @@ Current v1 source policy:
 - unsafe: BeaverTails only
 - benign_sensitive: FalseReject train only
 - benign: Alpaca only
-- dual_use: fully generated in v1
+- dual_use: project-created / contributor-provided in v1
 
 Current exclusions / simplifications:
 - Do not use HH-RLHF in v1 prompt acquisition
 - Do not use BeaverTails confidence / decision-boundary ideas
 - Do not require manual mining and relabeling of dual_use prompts from existing datasets in v1
+
+## Current phase clarification
+For the three dataset-backed categories:
+- unsafe from BeaverTails
+- benign_sensitive from FalseReject train
+- benign from Alpaca
+
+the prompt-source policy, acquisition logic, and selection logic are already decided and implemented.
+
+The main pending data/execution work is:
+- assembling the real dual_use prompt set
+- running real acceptable-response generation
+- later choosing and running a real unsafe_compliance sourcing approach
+- real BABEL/runtime validation for training and evaluation
 
 ## Current implementation priorities
 When extending the repo, prioritize this order:
@@ -236,8 +253,9 @@ Do not rely on hidden assumptions.
 - Do not rely on global `pair_type` filtering as the final regime-selection logic
 
 ## Reference docs
-Use these first when present:
+Use these when relevant:
 - `README.md`
 - `PROJECT_PLAN.md`
 
 If docs and code disagree, flag it instead of guessing.
+Prefer current code, configs, and tests over stale prose.
