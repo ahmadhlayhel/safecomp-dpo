@@ -18,5 +18,15 @@ data/preference_pairs/
 
 .claude/settings.local.json
 
-hf_data/
+# hf_data — track selected prompts and converted response records.
+# Ignore raw source files, benchmarks, and all generated artifacts.
+hf_data/**
+!hf_data/prompts/
+!hf_data/prompts/selected/
+!hf_data/prompts/selected/**
+!hf_data/prompts/dual_use/
+!hf_data/prompts/dual_use/**
+!hf_data/responses/
+!hf_data/responses/dual_use/
+!hf_data/responses/dual_use/dualuse_response_records.jsonl
 *.egg-info/
