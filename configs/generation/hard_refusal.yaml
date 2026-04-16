@@ -33,7 +33,7 @@ expected_response_types:
   benign:
     - hard_refusal
 
-model: gpt-4o-2024-11-20
+model: gpt-4o-mini
 
 response_type_settings:
   hard_refusal:
