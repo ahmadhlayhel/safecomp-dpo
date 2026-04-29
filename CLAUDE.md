@@ -40,13 +40,28 @@ Real datasets live in `hf_data/benchmarks/` (gitignored). Mock fallback is autom
 
 Current missing / not-yet-runtime-validated real backends:
 - real generation backend (vllm on BABEL)
-- real rejected-response sourcing backend
+- real rejected-response sourcing backend  [unsafe_compliance — see below]
 - real benchmark model backend (vllm on BABEL)
 - real benchmark scoring backend (WildGuard / Llama Guard / StrongREJECT classifier)
 
 Training:
 - the TRL / QLoRA training backend is implemented
 - it still needs real BABEL/runtime validation
+
+## Real data status (as of 2026-04-29)
+
+Real prompt and response data is now partially available:
+
+| Artifact | File | Count | Status |
+|---|---|---|---|
+| All prompts | `hf_data/prompts/all_prompts.jsonl` | 7 902 | DONE — committed |
+| dual_use safe_completion + hard_refusal | `hf_data/responses/dual_use/dualuse_response_records.jsonl` | 5 004 | DONE — committed |
+| hard_refusal (all 4 categories) | `hf_data/responses/hard_refusal_responses.jsonl` | 7 902 | DONE — committed |
+| helpful_answer (benign + benign_sensitive) | `hf_data/responses/helpful_answer_responses.jsonl` | 3 600 | DONE — committed |
+| unsafe_compliance (unsafe + dual_use) | `hf_data/responses/unsafe_compliance_responses.jsonl` | 4 302 | PENDING |
+
+The only blocker to a full end-to-end run on real data is `unsafe_compliance`.
+See `docs/unsafe_compliance_handoff.md` for the exact delivery contract.
 
 ## Workflow
 Prefer:
@@ -186,10 +201,13 @@ For the three dataset-backed categories:
 the prompt-source policy, acquisition logic, and selection logic are already decided and implemented.
 
 The main pending data/execution work is:
-- assembling the real dual_use prompt set
-- running real acceptable-response generation
-- later choosing and running a real unsafe_compliance sourcing approach
+- ~~assembling the real dual_use prompt set~~ DONE
+- ~~running real acceptable-response generation~~ DONE (hard_refusal + helpful_answer + dual_use safe_completion)
+- **sourcing unsafe_compliance** (unsafe + dual_use, 4 302 records) — this is the current active task
 - real BABEL/runtime validation for training and evaluation
+
+Once `unsafe_compliance` is delivered to `hf_data/responses/unsafe_compliance_responses.jsonl`,
+the pipeline can run end-to-end on real data starting from `scripts/merge_responses.py`.
 
 ## Current implementation priorities
 When extending the repo, prioritize this order:
@@ -206,6 +224,11 @@ Do not rewrite stable stages without a clear reason.
 - Large datasets and artifacts belong in the private Hugging Face dataset repo
 - Raw harmful generations must remain private
 - Do not commit secrets, tokens, caches, checkpoints, or large raw artifacts
+
+Selected `hf_data/` files are now tracked directly in the GitHub repo (the
+nested `.git` from the HF dataset clone was removed). The gitignore uses
+`hf_data/**` with explicit `!` exceptions for the files listed above. See
+`.gitignore` for the current whitelist.
 
 ## Folder intent
 - `src/safecomp_dpo/`: main package
