@@ -252,12 +252,83 @@ class OpenAIAPIBackend:
 
 
 # ---------------------------------------------------------------------------
+# vLLM backend
+# ---------------------------------------------------------------------------
+
+
+class VLLMBackend:
+    """vLLM OpenAI-compatible backend for BABEL GPU inference.
+
+    vLLM exposes an OpenAI-compatible /v1/chat/completions endpoint.
+    This backend reuses the openai client pointed at the local vLLM server.
+
+    Environment variables:
+        VLLM_BASE_URL  — base URL of the vLLM server
+                         (default: http://localhost:8000/v1)
+        VLLM_API_KEY   — API key sent to vLLM (default: "EMPTY",
+                         which is the vLLM conventional placeholder)
+
+    No rate-limit retry is needed — the server is local.
+    """
+
+    name: str = "vllm"
+    type_source_label: str = "explicit_vllm"
+
+    def __init__(self) -> None:
+        try:
+            import openai as _openai  # noqa: PLC0415
+            self._openai = _openai
+        except ImportError as exc:
+            raise ImportError(
+                "The openai package is required for the vllm backend.\n"
+                "Install it with:  pip install openai>=1.0"
+            ) from exc
+
+        base_url = os.environ.get("VLLM_BASE_URL", "http://localhost:8000/v1")
+        api_key = os.environ.get("VLLM_API_KEY", "EMPTY")
+        self.client = self._openai.OpenAI(base_url=base_url, api_key=api_key)
+        self.last_usage: dict[str, Any] = {}
+
+    def generate(self, prompt: str, response_type: ResponseType, config: dict) -> str:
+        rt_name = response_type.value
+        rt_settings: dict = config.get("response_type_settings", {}).get(rt_name, {})
+
+        system_prompt: str = rt_settings.get(
+            "system_prompt", "You are a helpful assistant."
+        )
+        temperature: float = float(
+            rt_settings.get("temperature", config.get("temperature", 0.7))
+        )
+        max_tokens: int = int(
+            rt_settings.get("max_tokens", config.get("max_tokens", 512))
+        )
+        model: str = config.get("model", "meta-llama/Llama-3.1-8B-Instruct")
+
+        resp = self.client.chat.completions.create(
+            model=model,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": prompt},
+            ],
+            temperature=temperature,
+            max_tokens=max_tokens,
+        )
+        self.last_usage = {
+            "finish_reason": resp.choices[0].finish_reason,
+            "prompt_tokens": resp.usage.prompt_tokens if resp.usage else None,
+            "completion_tokens": resp.usage.completion_tokens if resp.usage else None,
+        }
+        return resp.choices[0].message.content or ""
+
+
+# ---------------------------------------------------------------------------
 # Backend registry
 # ---------------------------------------------------------------------------
 
 _BACKENDS: dict[str, type] = {
     "mock": MockBackend,
     "openai_api": OpenAIAPIBackend,
+    "vllm": VLLMBackend,
 }
 
 

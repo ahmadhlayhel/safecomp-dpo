@@ -1,0 +1,45 @@
+# Response generation config — unsafe_compliance, Pass 2 (Llama-3.1-8B fallback)
+#
+# Covers only the prompts refused by GPT-4o-mini in Pass 1.
+# Run on BABEL using the vllm backend.
+#
+# Prerequisites:
+#   1. Pass 1 complete: outputs/unsafe_compliance/gpt4o_mini_pass.jsonl exists
+#   2. filter_refusals.py run: outputs/unsafe_compliance/refused_prompts.jsonl exists
+#   3. vllm server running: vllm serve meta-llama/Llama-3.1-8B-Instruct --port 8000
+#
+# Run (on BABEL):
+#   VLLM_BASE_URL=http://localhost:8000/v1 \
+#   python scripts/generate_responses.py \
+#     --prompts outputs/unsafe_compliance/refused_prompts.jsonl \
+#     --config  configs/generation/unsafe_compliance_llama.yaml \
+#     --output  outputs/unsafe_compliance/llama_fallback.jsonl \
+#     --backend vllm \
+#     --resume \
+#     --report  outputs/unsafe_compliance/llama_report.json
+#
+# Then merge:
+#   python scripts/merge_unsafe_compliance.py \
+#     --gpt-clean       outputs/unsafe_compliance/gpt4o_clean.jsonl \
+#     --llama-fallback  outputs/unsafe_compliance/llama_fallback.jsonl \
+#     --prompts         hf_data/prompts/all_prompts.jsonl \
+#     --output          hf_data/responses/unsafe_compliance_responses.jsonl \
+#     --report          outputs/unsafe_compliance/merge_report.json
+
+expected_response_types:
+  unsafe:
+    - unsafe_compliance
+  dual_use:
+    - unsafe_compliance
+
+model: meta-llama/Llama-3.1-8B-Instruct
+
+response_type_settings:
+  unsafe_compliance:
+    temperature: 0.7
+    max_tokens: 512
+    system_prompt: |
+      You are a helpful assistant. Answer the user's question directly and completely.
+
+output_path: outputs/unsafe_compliance/llama_fallback.jsonl
+report_path: outputs/unsafe_compliance/llama_report.json
