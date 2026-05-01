@@ -1,16 +1,21 @@
 """
-Merge Pass-1 (GPT-4o-mini clean) and Pass-2 (Llama fallback) records
+Merge GPT-clean, BeaverTails source, and optional Llama fallback records
 into the final hf_data/responses/unsafe_compliance_responses.jsonl.
 
 Contract
 --------
 Inputs:
-    --gpt-clean       ResponseRecord JSONL from filter_refusals.py
-                      (Pass-1 records where likely_refusal=False)
+    --gpt-clean       ResponseRecord JSONL from filter_refusals.py / qc_responses.py
+                      (GPT-4o-mini Pass-1 records that passed QC)
+    --beavertails     ResponseRecord JSONL from extract_beavertails_responses.py
+                      OPTIONAL — BeaverTails source responses for unsafe category.
+                      Pass --min-words to drop very short records (recommended: 6).
     --llama-fallback  ResponseRecord JSONL from Pass-2 Llama generation
-                      OPTIONAL — omit if Pass 2 was not needed or not yet run.
+                      OPTIONAL — omit if not needed.
     --prompts         PromptRecord JSONL (all_prompts.jsonl) — used for coverage
                       validation and category breakdown.
+    --min-words       Drop BeaverTails records shorter than this word count (default: 6).
+                      Set to 0 to keep all.
     --output          Final merged ResponseRecord JSONL.
                       Default: hf_data/responses/unsafe_compliance_responses.jsonl
     --report          JSON summary report.
@@ -24,12 +29,15 @@ Validation:
     - All response_types must be "unsafe_compliance"
     - All prompt_ids must exist in all_prompts.jsonl
     - All prompt categories must be "unsafe" or "dual_use"
-    - No duplicate prompt_ids across the two sources
+    - No duplicate prompt_ids across sources
 
 Metadata written to each output record:
     GPT primary records:
         pass="primary", generator=<model>, likely_refusal=False
-        (already set by filter_refusals.py — preserved here)
+        (already set by filter_refusals.py / qc_responses.py — preserved here)
+    BeaverTails source records:
+        pass="beavertails_source", generator="beavertails/<split>"
+        (already set by extract_beavertails_responses.py — preserved here)
     Llama fallback records:
         pass="fallback", generator=<model>, fallback=True
         (added by this script)
@@ -76,9 +84,20 @@ _ELIGIBLE_CATEGORIES = {PromptCategory.unsafe, PromptCategory.dual_use}
 
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
-        description="Merge GPT-clean and Llama-fallback into the final unsafe_compliance JSONL."
+        description="Merge GPT-clean, BeaverTails source, and Llama-fallback into the final unsafe_compliance JSONL."
     )
     p.add_argument("--gpt-clean", required=True, help="Pass-1 clean ResponseRecord JSONL")
+    p.add_argument(
+        "--beavertails",
+        default=None,
+        help="BeaverTails source ResponseRecord JSONL from extract_beavertails_responses.py (optional)",
+    )
+    p.add_argument(
+        "--min-words",
+        type=int,
+        default=6,
+        help="Drop BeaverTails records shorter than this word count (default: 6, set 0 to keep all)",
+    )
     p.add_argument(
         "--llama-fallback",
         default=None,
@@ -98,8 +117,10 @@ def main() -> None:
     args = build_parser().parse_args()
 
     gpt_path = Path(getattr(args, "gpt_clean"))
+    bt_path = Path(args.beavertails) if args.beavertails else None
     llama_path = Path(args.llama_fallback) if args.llama_fallback else None
     prompts_path = Path(args.prompts)
+    min_words: int = args.min_words
     output_path = Path(args.output)
     report_path = Path(args.report)
 
@@ -159,6 +180,23 @@ def main() -> None:
     n_gpt = ingest(gpt_records, str(gpt_path), is_fallback=False)
     print(f"  {len(gpt_records)} loaded, {n_gpt} ingested")
 
+    n_bt = 0
+    n_bt_dropped_short = 0
+    if bt_path is not None:
+        if bt_path.exists():
+            print(f"Loading BeaverTails source records from {bt_path}")
+            bt_records = load_response_records(bt_path)
+            if min_words > 0:
+                before = len(bt_records)
+                bt_records = [r for r in bt_records if r.metadata.get("word_count", 999) >= min_words]
+                n_bt_dropped_short = before - len(bt_records)
+                if n_bt_dropped_short:
+                    print(f"  Dropped {n_bt_dropped_short} BeaverTails records with < {min_words} words")
+            n_bt = ingest(bt_records, str(bt_path), is_fallback=False)
+            print(f"  {len(bt_records)} loaded, {n_bt} ingested")
+        else:
+            print(f"  WARNING: --beavertails path {bt_path} not found — skipping", file=sys.stderr)
+
     n_llama = 0
     if llama_path is not None:
         if llama_path.exists():
@@ -198,6 +236,8 @@ def main() -> None:
         "output": str(output_path),
         "total": len(all_records),
         "gpt_primary": n_gpt,
+        "beavertails_source": n_bt,
+        "beavertails_dropped_short": n_bt_dropped_short,
         "llama_fallback": n_llama,
         "eligible_total": len(eligible_prompt_ids),
         "missing_count": len(missing_ids),
@@ -210,9 +250,10 @@ def main() -> None:
         json.dump(report, f, indent=2)
 
     print(f"\nMerge complete.")
-    print(f"  Total records:  {len(all_records)} / {len(eligible_prompt_ids)} eligible")
-    print(f"  GPT primary:    {n_gpt}")
-    print(f"  Llama fallback: {n_llama}")
+    print(f"  Total records:      {len(all_records)} / {len(eligible_prompt_ids)} eligible")
+    print(f"  GPT primary:        {n_gpt}")
+    print(f"  BeaverTails source: {n_bt}  (dropped short: {n_bt_dropped_short})")
+    print(f"  Llama fallback:     {n_llama}")
     print(f"  Missing:        {len(missing_ids)}")
     print(f"  Coverage:       {coverage_pct}%")
     print(f"  By source+cat:  {by_source_cat}")

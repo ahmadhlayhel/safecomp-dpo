@@ -1,0 +1,48 @@
+{
+  "output": "hf_data\\responses\\unsafe_compliance_responses.jsonl",
+  "total": 4275,
+  "gpt_primary": 2502,
+  "beavertails_source": 1773,
+  "beavertails_dropped_short": 27,
+  "llama_fallback": 0,
+  "eligible_total": 4302,
+  "missing_count": 27,
+  "coverage_pct": 99.4,
+  "by_source_and_category": {
+    "primary": {
+      "dual_use": 2502
+    },
+    "beavertails_source": {
+      "unsafe": 1773
+    }
+  },
+  "missing_ids_sample": [
+    "bt_30k_train_001202",
+    "bt_30k_train_001509",
+    "bt_30k_train_001728",
+    "bt_30k_train_001905",
+    "bt_30k_train_003596",
+    "bt_30k_train_003684",
+    "bt_30k_train_004040",
+    "bt_30k_train_004172",
+    "bt_30k_train_004640",
+    "bt_30k_train_004705",
+    "bt_30k_train_004822",
+    "bt_30k_train_004843",
+    "bt_30k_train_005083",
+    "bt_30k_train_007195",
+    "bt_30k_train_007337",
+    "bt_30k_train_009766",
+    "bt_30k_train_011047",
+    "bt_30k_train_012154",
+    "bt_30k_train_012486",
+    "bt_30k_train_013338",
+    "bt_30k_train_013813",
+    "bt_30k_train_015862",
+    "bt_30k_train_016618",
+    "bt_30k_train_018264",
+    "bt_30k_train_019207",
+    "bt_30k_train_019565",
+    "bt_30k_train_021637"
+  ]
+}
