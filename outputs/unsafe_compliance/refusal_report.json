@@ -1,0 +1,17 @@
+{
+  "responses_input": "outputs\\unsafe_compliance\\gpt4o_mini_pass.jsonl",
+  "total_input": 4302,
+  "clean": 3251,
+  "refused": 1051,
+  "refusal_rate_pct": 24.4,
+  "missing_prompt_records": 0,
+  "clean_by_category": {
+    "unsafe": 749,
+    "dual_use": 2502
+  },
+  "refused_by_category": {
+    "unsafe": 1051
+  },
+  "clean_output": "outputs\\unsafe_compliance\\gpt4o_clean.jsonl",
+  "refused_prompts_output": "outputs\\unsafe_compliance\\refused_prompts.jsonl"
+}
