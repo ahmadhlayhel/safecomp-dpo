@@ -44,8 +44,8 @@ Current missing / not-yet-runtime-validated real backends:
 - real benchmark scoring backend (WildGuard / Llama Guard / StrongREJECT classifier)
 
 Training:
-- the TRL / QLoRA training backend is implemented
-- it still needs real BABEL/runtime validation
+- the TRL / QLoRA training backend is implemented and validated on BABEL
+- both baseline and safecomp adapters trained to completion (2026-05-02)
 
 ## Real data status (as of 2026-05-02)
 
@@ -207,7 +207,41 @@ The main pending data/execution work is:
 - ~~running real acceptable-response generation~~ DONE (hard_refusal + helpful_answer + dual_use safe_completion)
 - ~~sourcing unsafe_compliance~~ DONE (4 275 records in hf_data/responses/unsafe_compliance_responses.jsonl)
 - ~~full end-to-end pipeline run on real data~~ DONE (12 879 pairs, baseline 7 875, safecomp 10 377)
-- **real BABEL/runtime validation for training and evaluation** — this is the current active task
+- ~~real BABEL training~~ DONE (baseline job 7646053 + safecomp job 7646054, 2026-05-02, L40S GPU, 3-4 h each)
+- **real evaluation** — this is the current active task
+
+## BABEL training results (2026-05-02)
+
+Both models trained with TRL DPO + QLoRA (4-bit, LoRA r=16), 3 epochs, eff. batch 16, lr 5e-6, β=0.1.
+
+| Metric | Baseline | SafeComp |
+|---|---|---|
+| SLURM job | 7646053 COMPLETED | 7646054 COMPLETED |
+| Wall-clock | 3h 41m | ~4h |
+| Optimizer steps | 1 479 | 1 947 |
+| Final loss | 0.149 | 0.102 |
+| rewards/chosen | +0.531 | — |
+| rewards/rejected | −6.392 | — |
+| rewards/margin | 6.92 | — |
+| rewards/accuracy | 0.994 | — |
+
+Adapters at:
+- `outputs/training/baseline_babel/checkpoint/adapter_model.safetensors` (~2.13 GB)
+- `outputs/training/safecomp_babel/checkpoint/adapter_model.safetensors` (~2.13 GB)
+
+Reproducibility bundle: `outputs/training/run_metadata/`
+
+## Evaluation status
+
+Custom eval (scripts/evaluate_model.py) and benchmark eval (scripts/run_benchmark.py)
+are implemented but currently mock-only. Real eval requires:
+1. Real HF/PEFT generation backend wired into evaluate_model.py
+2. Real judge backend (regex rule-based v0, or LLM-guard for accuracy)
+3. Held-out eval prompts (all 7 902 prompts are in training pool — no internal held-out set)
+   Options: (a) standard benchmarks (HarmBench/XSTest/OR-Bench/FalseReject), or
+            (b) held-out slice from source pools, or (c) new synthetic held-out set
+
+Adapter inference smoke job 7655826 running on BABEL (checks loading + generation pipeline).
 
 ## Current implementation priorities
 When extending the repo, prioritize this order:
