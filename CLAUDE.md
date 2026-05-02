@@ -40,7 +40,6 @@ Real datasets live in `hf_data/benchmarks/` (gitignored). Mock fallback is autom
 
 Current missing / not-yet-runtime-validated real backends:
 - real generation backend (vllm on BABEL)
-- real rejected-response sourcing backend  [unsafe_compliance — see below]
 - real benchmark model backend (vllm on BABEL)
 - real benchmark scoring backend (WildGuard / Llama Guard / StrongREJECT classifier)
 
@@ -48,9 +47,9 @@ Training:
 - the TRL / QLoRA training backend is implemented
 - it still needs real BABEL/runtime validation
 
-## Real data status (as of 2026-04-29)
+## Real data status (as of 2026-05-02)
 
-Real prompt and response data is now partially available:
+The full pipeline now runs end-to-end on real data. All response artifacts are present.
 
 | Artifact | File | Count | Status |
 |---|---|---|---|
@@ -58,10 +57,13 @@ Real prompt and response data is now partially available:
 | dual_use safe_completion + hard_refusal | `hf_data/responses/dual_use/dualuse_response_records.jsonl` | 5 004 | DONE — committed |
 | hard_refusal (all 4 categories) | `hf_data/responses/hard_refusal_responses.jsonl` | 7 902 | DONE — committed |
 | helpful_answer (benign + benign_sensitive) | `hf_data/responses/helpful_answer_responses.jsonl` | 3 600 | DONE — committed |
-| unsafe_compliance (unsafe + dual_use) | `hf_data/responses/unsafe_compliance_responses.jsonl` | 4 302 | PENDING |
+| unsafe_compliance (unsafe + dual_use) | `hf_data/responses/unsafe_compliance_responses.jsonl` | 4 275 | DONE — committed |
+| Full merged responses | `hf_data/responses/full_responses.jsonl` | 18 279 | DONE — local |
+| Full DPO dataset | `hf_data/dpo/full_dpo_dataset.jsonl` | 12 879 | DONE — local |
+| Baseline training dataset | `hf_data/dpo/baseline_dpo_dataset.jsonl` | 7 875 | DONE — local |
+| SafeComp training dataset | `hf_data/dpo/safecomp_dpo_dataset.jsonl` | 10 377 | DONE — local |
 
-The only blocker to a full end-to-end run on real data is `unsafe_compliance`.
-See `docs/unsafe_compliance_handoff.md` for the exact delivery contract.
+unsafe_compliance sourcing: 2 502 GPT-4o-mini records (dual_use) + 1 773 BeaverTails source records (unsafe), 27 garbage records dropped (≤5 words).
 
 ## Workflow
 Prefer:
@@ -203,11 +205,9 @@ the prompt-source policy, acquisition logic, and selection logic are already dec
 The main pending data/execution work is:
 - ~~assembling the real dual_use prompt set~~ DONE
 - ~~running real acceptable-response generation~~ DONE (hard_refusal + helpful_answer + dual_use safe_completion)
-- **sourcing unsafe_compliance** (unsafe + dual_use, 4 302 records) — this is the current active task
-- real BABEL/runtime validation for training and evaluation
-
-Once `unsafe_compliance` is delivered to `hf_data/responses/unsafe_compliance_responses.jsonl`,
-the pipeline can run end-to-end on real data starting from `scripts/merge_responses.py`.
+- ~~sourcing unsafe_compliance~~ DONE (4 275 records in hf_data/responses/unsafe_compliance_responses.jsonl)
+- ~~full end-to-end pipeline run on real data~~ DONE (12 879 pairs, baseline 7 875, safecomp 10 377)
+- **real BABEL/runtime validation for training and evaluation** — this is the current active task
 
 ## Current implementation priorities
 When extending the repo, prioritize this order:

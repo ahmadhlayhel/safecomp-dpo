@@ -1,0 +1,20 @@
+# Validation config for full_responses.jsonl (all response types combined).
+#
+# Used by validate_responses.py after merge_responses.py produces full_responses.jsonl.
+# Extends full.yaml with unsafe_compliance for unsafe + dual_use, which is sourced
+# separately (not generated) but still needs validation before pair construction.
+
+expected_response_types:
+  unsafe:
+    - hard_refusal
+    - unsafe_compliance
+  dual_use:
+    - hard_refusal
+    - safe_completion
+    - unsafe_compliance
+  benign_sensitive:
+    - helpful_answer
+    - hard_refusal
+  benign:
+    - helpful_answer
+    - hard_refusal
