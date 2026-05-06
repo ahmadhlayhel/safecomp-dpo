@@ -1,0 +1,67 @@
+# SafeComp-DPO smoke config — BABEL (real TRL backend, tiny GPU smoke)
+#
+# Validates the full TRL + QLoRA + 4-bit stack on a single GPU using a
+# 100-row slice of the safecomp dataset. Produces a real LoRA adapter
+# checkpoint in outputs/training/safecomp_smoke_babel/. Use this to confirm
+# model load, 4-bit quantization, gradient flow, and save logic before
+# launching the full 3-epoch baseline/safecomp jobs.
+#
+# Inputs:
+#   dataset:  hf_data/dpo/smoke_dpo_dataset.jsonl  (head -100 of safecomp)
+#   config:   this file
+#
+# Usage (BABEL):
+#   sbatch scripts/babel_train_dpo.sbatch smoke
+#
+# Differences from configs/training/safecomp_babel.yaml:
+#   - num_train_epochs: 1   (was 3)
+#   - logging_steps:    1   (was 10)        — log every step for visibility
+#   - save_strategy:    "no" (was "epoch")  — skip mid-epoch saves; final save still happens
+#   - output paths point to outputs/training/safecomp_smoke_babel/
+#
+# All model / LoRA / 4-bit settings are identical to safecomp_babel.yaml so
+# the smoke run exercises the same code paths as production.
+
+regime: safecomp_smoke
+description: "SafeComp-DPO smoke: 100-row safecomp slice, 1 epoch — TRL+QLoRA stack validation"
+model: meta-llama/Llama-3.1-8B-Instruct
+backend: trl_dpo
+
+# No additional filtering; smoke dataset is already a slice of safecomp.
+pair_types: []
+categories: []
+
+# --- Training hyperparameters (smoke) ---
+num_train_epochs: 1
+per_device_train_batch_size: 4
+gradient_accumulation_steps: 4       # ~6 grad steps for 100 rows
+learning_rate: 5.0e-6
+lr_scheduler_type: cosine
+warmup_ratio: 0.1
+beta: 0.1
+loss_type: sigmoid
+max_length: 1024
+max_prompt_length: 512
+logging_steps: 1                     # log every step
+save_strategy: "no"                  # skip intermediate saves; final save_model still runs
+bf16: true
+gradient_checkpointing: true
+optim: paged_adamw_8bit
+
+# --- LoRA (PEFT) — identical to production ---
+use_lora: true
+lora_r: 16
+lora_alpha: 16
+lora_target_modules: all-linear
+lora_dropout: 0.05
+modules_to_save:
+  - lm_head
+  - embed_tokens
+
+# --- 4-bit QLoRA (bitsandbytes) ---
+use_4bit: true
+
+# --- Output paths (smoke-isolated) ---
+output_dir: outputs/training/safecomp_smoke_babel
+report_path: outputs/training/safecomp_smoke_babel/training_report.json
+checkpoint_dir: outputs/training/safecomp_smoke_babel/checkpoint
