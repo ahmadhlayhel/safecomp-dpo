@@ -425,15 +425,20 @@ def run_evaluation(
     model_backend: ModelBackend,
     judge_backend: JudgeBackend,
     config_path: str | Path,
+    partial_output_path: str | Path | None = None,
 ) -> list[EvalRecord]:
     """Generate and judge responses for each evaluation prompt.
 
     Args:
-        prompts:       PromptRecord list to evaluate
-        config:        evaluation config dict
-        model_backend: ModelBackend instance
-        judge_backend: JudgeBackend instance
-        config_path:   stored in record metadata for provenance
+        prompts:             PromptRecord list to evaluate
+        config:              evaluation config dict
+        model_backend:       ModelBackend instance
+        judge_backend:       JudgeBackend instance
+        config_path:         stored in record metadata for provenance
+        partial_output_path: if set, each EvalRecord is appended as JSONL
+                             to this path immediately after it is produced.
+                             Provides durability against walltime / OOM /
+                             crash mid-run. Truncated at start of loop.
 
     Returns:
         list of EvalRecord, one per prompt, in input order.
@@ -441,25 +446,43 @@ def run_evaluation(
     run_id: str = config.get("run_id", "unknown_run")
     records: list[EvalRecord] = []
 
-    for prompt in prompts:
-        response = model_backend.generate(prompt.prompt, prompt.category, config)
-        judge_label = judge_backend.judge(prompt.prompt, response, prompt.category, config)
+    partial_fh = None
+    if partial_output_path is not None:
+        partial_path = Path(partial_output_path)
+        partial_path.parent.mkdir(parents=True, exist_ok=True)
+        partial_fh = partial_path.open("w", encoding="utf-8")
 
-        records.append(EvalRecord(
-            eval_id=make_eval_id(prompt.prompt_id, run_id),
-            prompt_id=prompt.prompt_id,
-            run_id=run_id,
-            category=prompt.category,
-            prompt=prompt.prompt,
-            response=response,
-            judge_label=judge_label,
-            metadata={
-                "model_backend": model_backend.name,
-                "judge_backend": judge_backend.name,
-                "config_path": str(config_path),
-                "mock_regime": config.get("mock_regime"),
-            },
-        ))
+    try:
+        for i, prompt in enumerate(prompts, start=1):
+            response = model_backend.generate(prompt.prompt, prompt.category, config)
+            judge_label = judge_backend.judge(prompt.prompt, response, prompt.category, config)
+
+            rec = EvalRecord(
+                eval_id=make_eval_id(prompt.prompt_id, run_id),
+                prompt_id=prompt.prompt_id,
+                run_id=run_id,
+                category=prompt.category,
+                prompt=prompt.prompt,
+                response=response,
+                judge_label=judge_label,
+                metadata={
+                    "model_backend": model_backend.name,
+                    "judge_backend": judge_backend.name,
+                    "config_path": str(config_path),
+                    "mock_regime": config.get("mock_regime"),
+                },
+            )
+            records.append(rec)
+
+            if partial_fh is not None:
+                partial_fh.write(rec.model_dump_json() + "\n")
+                partial_fh.flush()
+
+            if i % 25 == 0 or i == len(prompts):
+                print(f"[run_evaluation] {i}/{len(prompts)} prompts done", flush=True)
+    finally:
+        if partial_fh is not None:
+            partial_fh.close()
 
     return records
 
@@ -591,7 +614,15 @@ def main() -> None:
     judge_backend = get_judge_backend(judge_backend_name)
 
     print("Running evaluation...")
-    records = run_evaluation(prompts, config, model_backend, judge_backend, str(config_path))
+    partial_path = None if args.dry_run else output_path.with_suffix(".partial.jsonl")
+    records = run_evaluation(
+        prompts,
+        config,
+        model_backend,
+        judge_backend,
+        str(config_path),
+        partial_output_path=partial_path,
+    )
     print(f"  {len(records)} EvalRecords produced")
 
     print("Aggregating metrics...")

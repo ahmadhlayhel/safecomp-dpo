@@ -4,8 +4,9 @@
 #SBATCH --gres=gpu:1
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=64G
-#SBATCH --time=03:00:00
+#SBATCH --time=08:00:00
 #SBATCH --constraint=A6000|L40S|H100|A100_80GB|A100_40GB
+#SBATCH --exclude=babel-n9-32,babel-m5-32,babel-p5-24
 #SBATCH --output=/data/group_data/wehbelab/ahlayhel/logs/safecomp_eval_%j.out
 #SBATCH --error=/data/group_data/wehbelab/ahlayhel/logs/safecomp_eval_%j.err
 
