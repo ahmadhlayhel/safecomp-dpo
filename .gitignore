@@ -6,7 +6,10 @@ __pycache__/
 .mypy_cache/
 
 results/
-outputs/
+outputs/**
+!outputs/eval/
+!outputs/eval/baseline_peft_eval.jsonl
+!outputs/eval/safecomp_peft_eval.jsonl
 models/
 wandb/
 
