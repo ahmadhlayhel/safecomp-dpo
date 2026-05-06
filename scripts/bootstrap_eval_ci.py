@@ -42,7 +42,7 @@ TARGET_LABELS = {
 def load_records(path: Path) -> dict[str, dict]:
     """Return {prompt_id: record}."""
     out: dict[str, dict] = {}
-    with path.open() as f:
+    with open(path, "r", encoding="utf-8") as f:
         for line in f:
             r = json.loads(line)
             out[r["prompt_id"]] = r

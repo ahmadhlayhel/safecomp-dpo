@@ -113,7 +113,7 @@ def parse_label(text: str) -> str | None:
 
 def load_jsonl(path: Path) -> list[dict]:
     rows: list[dict] = []
-    with path.open() as f:
+    with open(path, "r", encoding="utf-8") as f:
         for line in f:
             line = line.strip()
             if not line:
