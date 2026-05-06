@@ -294,7 +294,10 @@ class TRLDPOBackend:
         dataset = dpo_records_to_hf_dataset(examples)
 
         # --- DPO training arguments ---
-        dpo_args = DPOConfig(
+        # Build the kwarg set, then filter to fields actually accepted by the
+        # installed TRL version. TRL 1.x dropped `max_prompt_length` from
+        # DPOConfig (consolidated into max_length); older TRL accepts it.
+        dpo_kwargs: dict[str, Any] = dict(
             output_dir=checkpoint_dir,
             num_train_epochs=int(config.get("num_train_epochs", 1)),
             per_device_train_batch_size=int(config.get("per_device_train_batch_size", 4)),
@@ -313,6 +316,15 @@ class TRLDPOBackend:
             optim=config.get("optim", "paged_adamw_8bit"),
             remove_unused_columns=False,
         )
+        _dpo_params = inspect.signature(DPOConfig.__init__).parameters
+        dropped = sorted(set(dpo_kwargs) - set(_dpo_params))
+        if dropped:
+            print(
+                f"[train_dpo] DPOConfig does not accept {dropped}; dropping for "
+                "this TRL version.",
+                file=sys.stderr,
+            )
+        dpo_args = DPOConfig(**{k: v for k, v in dpo_kwargs.items() if k in _dpo_params})
 
         # --- TRL version-compatible trainer construction ---
         # TRL >= 0.9 renamed `tokenizer` → `processing_class`; support both.
