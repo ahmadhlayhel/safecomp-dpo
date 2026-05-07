@@ -34,6 +34,21 @@ case "$REGIME" in
     PROMPTS=hf_data/eval/held_out_prompts.jsonl
     DRY_RUN=""
     ;;
+  base)
+    CONFIG=configs/eval/base.yaml
+    PROMPTS=hf_data/eval/held_out_prompts.jsonl
+    DRY_RUN=""
+    ;;
+  baseline_strict)
+    CONFIG=configs/eval/baseline_strict_peft.yaml
+    PROMPTS=hf_data/eval/held_out_prompts.jsonl
+    DRY_RUN=""
+    ;;
+  safecomp_dualuse_x2)
+    CONFIG=configs/eval/safecomp_dualuse_x2_peft.yaml
+    PROMPTS=hf_data/eval/held_out_prompts.jsonl
+    DRY_RUN=""
+    ;;
   dry-baseline)
     CONFIG=configs/eval/baseline_peft.yaml
     PROMPTS=hf_data/eval/dry_run_prompts.jsonl

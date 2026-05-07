@@ -285,6 +285,50 @@ class PeftModelBackend:
 
 
 # ---------------------------------------------------------------------------
+# HF base-model backend (no adapter) — used to measure where the base
+# Llama-3.1-8B-Instruct sits relative to the trained adapters.
+# ---------------------------------------------------------------------------
+
+
+class HFBaseModelBackend:
+    """Real inference backend: bf16 Llama-3.1-8B-Instruct, no adapter."""
+
+    name: str = "hf_base"
+
+    def __init__(self) -> None:
+        import torch
+        from transformers import AutoModelForCausalLM, AutoTokenizer
+
+        base_model_id = "meta-llama/Llama-3.1-8B-Instruct"
+        print(f"[HFBaseModelBackend] loading base {base_model_id}")
+        self._tokenizer = AutoTokenizer.from_pretrained(base_model_id)
+        if self._tokenizer.pad_token is None:
+            self._tokenizer.pad_token = self._tokenizer.eos_token
+        self._model = AutoModelForCausalLM.from_pretrained(
+            base_model_id,
+            torch_dtype=torch.bfloat16,
+            device_map="auto",
+        )
+        self._model.eval()
+        self._device = next(self._model.parameters()).device
+        print("[HFBaseModelBackend] ready")
+
+    def generate(self, prompt: str, category: PromptCategory, config: dict) -> str:
+        import torch
+        max_new_tokens = int(config.get("max_new_tokens", 256))
+        inputs = self._tokenizer(prompt, return_tensors="pt").to(self._device)
+        with torch.no_grad():
+            output_ids = self._model.generate(
+                **inputs,
+                max_new_tokens=max_new_tokens,
+                do_sample=False,
+                pad_token_id=self._tokenizer.eos_token_id,
+            )
+        new_ids = output_ids[0][inputs["input_ids"].shape[-1]:]
+        return self._tokenizer.decode(new_ids, skip_special_tokens=True).strip()
+
+
+# ---------------------------------------------------------------------------
 # Regex-rule judge backend (CPU; v0 — fast, brittle on edge cases)
 # ---------------------------------------------------------------------------
 
@@ -361,6 +405,7 @@ class RegexJudgeBackend:
 _MODEL_BACKENDS: dict[str, type] = {
     "mock": MockModelBackend,
     "peft": PeftModelBackend,
+    "hf_base": HFBaseModelBackend,
 }
 
 _JUDGE_BACKENDS: dict[str, type] = {

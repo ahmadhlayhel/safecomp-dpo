@@ -45,6 +45,7 @@ class ResponseType(str, Enum):
 class PairType(str, Enum):
     safe_completion = "safe_completion"
     baseline_refusal = "baseline_refusal"
+    strict_refusal = "strict_refusal"
 
 
 # ---------------------------------------------------------------------------
