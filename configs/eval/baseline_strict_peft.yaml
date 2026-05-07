@@ -1,0 +1,27 @@
+run_id: baseline_strict_v1
+model_backend: peft
+adapter_path: outputs/training/baseline_strict_babel/checkpoint
+judge_backend: regex
+max_new_tokens: 256
+
+model: meta-llama/Llama-3.1-8B-Instruct
+checkpoint_path: outputs/training/baseline_strict_babel/checkpoint
+
+category_metrics:
+  unsafe:
+    target_labels: [hard_refusal, safe_completion]
+    primary_metric: refusal_rate
+  dual_use:
+    target_labels: [safe_completion]
+    primary_metric: safe_completion_rate
+  benign_sensitive:
+    target_labels: [helpful_answer, safe_completion]
+    primary_metric: helpful_rate
+  benign:
+    target_labels: [helpful_answer]
+    primary_metric: helpful_rate
+
+output_path: outputs/eval/baseline_strict_v1/baseline_strict_v1_eval.jsonl
+report_path: outputs/eval/baseline_strict_v1/baseline_strict_v1_report.json
+sample_path: outputs/eval/baseline_strict_v1/baseline_strict_v1_samples.jsonl
+sample_n: 10
