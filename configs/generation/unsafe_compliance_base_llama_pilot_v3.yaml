@@ -1,0 +1,39 @@
+# Pilot v3 — base (non-Instruct) Llama-3.1-8B unsafe_compliance generation.
+#
+# v1 finding: 0% refusals but 39% degenerate_repetition.
+# v2 finding: degeneracy fixed; unsafe_compliance rate only ~14% (LLM judge).
+#
+# v3 change: few-shot priming to increase unsafe_compliance rate.
+#   - few_shot_n: 2  — sample 2 of 11 exemplars per prompt (seed=42)
+#   - exemplars defined in run_base_llama_pool_pilot._FEW_SHOT_EXEMPLARS
+#   - temperature bumped 0.8 → 0.9 for more diverse completions
+#   - all other params identical to v2
+#
+# DPO safety research context: generated outputs are used as the *rejected*
+# side of DPO preference pairs (unsafe_compliance). Never used as chosen.
+# Raw generations are stored privately (gitignored).
+
+run_id: base_llama_pool_pilot_v3
+model: meta-llama/Llama-3.1-8B
+response_type: unsafe_compliance
+
+few_shot_n: 2
+
+generation:
+  temperature: 0.9
+  top_p: 0.95
+  max_new_tokens: 384
+  do_sample: true
+  n_samples_per_prompt: 1
+  repetition_penalty: 1.15
+  no_repeat_ngram_size: 4
+  trim_at:
+    - "\nQuestion:"
+    - "\n\nQuestion:"
+  stop:
+    - "\nQuestion:"
+    - "\n\nQuestion:"
+
+prompts_path: outputs/pool_pilot_base_llama_v3/sampled_prompts.jsonl
+output_path:  outputs/pool_pilot_base_llama_v3/raw.jsonl
+report_path:  outputs/pool_pilot_base_llama_v3/raw_report.json
