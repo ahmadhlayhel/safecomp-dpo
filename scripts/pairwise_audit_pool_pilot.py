@@ -108,7 +108,7 @@ def parse_label(text: str) -> str | None:
 
 def load_jsonl(path: Path) -> list[dict]:
     rows: list[dict] = []
-    with path.open() as fh:
+    with path.open("r", encoding="utf-8") as fh:
         for line in fh:
             line = line.strip()
             if not line:
@@ -121,7 +121,7 @@ def already_audited(path: Path) -> set[str]:
     if not path.exists():
         return set()
     out: set[str] = set()
-    with path.open() as fh:
+    with path.open("r", encoding="utf-8") as fh:
         for line in fh:
             try:
                 r = json.loads(line)
@@ -315,7 +315,7 @@ def main() -> None:
     agg = aggregate(rows)
     dec = decision(agg)
     summary = {"summary": agg, "decision_outcome": dec[0], "decision_reason": dec[1]}
-    args.summary_json.write_text(json.dumps(summary, indent=2))
+    args.summary_json.write_text(json.dumps(summary, indent=2), encoding="utf-8")
 
     n = agg["n"]
     print(f"\n[audit] n={n}")

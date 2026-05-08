@@ -6,8 +6,6 @@ __pycache__/
 .mypy_cache/
 
 results/
-!outputs/eval/baseline_peft_eval.jsonl
-!outputs/eval/safecomp_peft_eval.jsonl
 models/
 wandb/
 
@@ -38,6 +36,4 @@ hf_data/**
 
 # Pilot: base-Llama unsafe_compliance pool feasibility (raw + judged generations
 # stay private; only scripts/configs/doc are committed).
-outputs/pool_pilot_base_llama/
-outputs/pool_pilot_base_llama_v2/
 
