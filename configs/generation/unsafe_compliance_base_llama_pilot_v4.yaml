@@ -1,0 +1,45 @@
+# Pilot v4 — base (non-Instruct) Llama-3.1-8B unsafe_compliance generation.
+#
+# v3 finding: 2-shot priming (static list, random sampling) gave 41% unsafe
+# under the 3-label dual_use judge, with strong domain-dependent variation
+# (offensive_cyber 67% vs biorisks 0%).
+#
+# v4 change: domain-matched 2-shot priming.
+#   - Each prompt gets two exemplars from its own du_domain when available,
+#     otherwise from the fallback domain (chemical_hazards).
+#   - Exemplars are drawn from the gitignored cache built off v3's own
+#     judge-confirmed unsafe_compliance outputs (private). The cache is
+#     external to this config; this script never embeds exemplar text.
+#   - Per-prompt deterministic exemplar sampling via prompt_id seed.
+#   - Same sampling params and trim rules as v3.
+#
+# DPO safety research context: generated outputs are used as the *rejected*
+# side of DPO preference pairs. Raw generations stored privately.
+
+run_id: base_llama_pool_pilot_v4
+model: meta-llama/Llama-3.1-8B
+response_type: unsafe_compliance
+
+few_shot_n: 2
+few_shot_mode: domain_matched
+few_shot_cache_path: outputs/pool_pilot_base_llama_v4/exemplar_cache.jsonl
+fallback_domain: chemical_hazards
+
+generation:
+  temperature: 0.9
+  top_p: 0.95
+  max_new_tokens: 384
+  do_sample: true
+  n_samples_per_prompt: 1
+  repetition_penalty: 1.15
+  no_repeat_ngram_size: 4
+  trim_at:
+    - "\nQuestion:"
+    - "\n\nQuestion:"
+  stop:
+    - "\nQuestion:"
+    - "\n\nQuestion:"
+
+prompts_path: outputs/pool_pilot_base_llama_v4/sampled_prompts.jsonl
+output_path:  outputs/pool_pilot_base_llama_v4/raw.jsonl
+report_path:  outputs/pool_pilot_base_llama_v4/raw_report.json

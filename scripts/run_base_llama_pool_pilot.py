@@ -169,6 +169,52 @@ def format_prompt_few_shot(
     return "\n\n".join(parts)
 
 
+def load_exemplar_cache(path: Path) -> dict[str, list[tuple[str, str]]]:
+    """Load a JSONL exemplar cache produced for v4-style domain-matched runs.
+
+    Schema per row: {domain, prompt_id, question, answer}.
+    Returns: domain -> list[(question, answer)].
+    """
+    cache: dict[str, list[tuple[str, str]]] = {}
+    with path.open(encoding="utf-8") as fh:
+        for line in fh:
+            line = line.strip()
+            if not line:
+                continue
+            r = json.loads(line)
+            cache.setdefault(r["domain"], []).append((r["question"], r["answer"]))
+    return cache
+
+
+def format_prompt_domain_matched(
+    user_text: str,
+    domain: str | None,
+    cache: dict[str, list[tuple[str, str]]],
+    fallback_domain: str,
+    n: int,
+    prompt_id: str,
+) -> tuple[str, bool]:
+    """Build a domain-matched few-shot prompt.
+
+    If the prompt's own domain has fewer than n exemplars, fall back to the
+    fallback domain. Sampling uses a per-prompt deterministic seed so the
+    same prompt always gets the same exemplars across runs.
+
+    Returns (formatted_prompt, used_fallback).
+    """
+    pool = cache.get(domain or "", [])
+    used_fallback = False
+    if len(pool) < n:
+        pool = cache.get(fallback_domain, [])
+        used_fallback = True
+    seed = abs(hash(prompt_id)) % (2**31)
+    local_rng = random.Random(seed)
+    selected = local_rng.sample(pool, min(n, len(pool)))
+    parts = [f"Question: {q}\nAnswer: {a}" for q, a in selected]
+    parts.append(f"Question: {user_text}\nAnswer:")
+    return "\n\n".join(parts), used_fallback
+
+
 def have_vllm() -> bool:
     try:
         import vllm  # noqa: F401
@@ -293,15 +339,38 @@ def main() -> None:
     print(f"[main] loaded {len(records)} prompts from {prompts_path}", flush=True)
 
     few_shot_n = int(cfg.get("few_shot_n", 0))
-    if few_shot_n > 0:
+    few_shot_mode = cfg.get("few_shot_mode", "static_list")
+    if few_shot_n > 0 and few_shot_mode == "domain_matched":
+        cache_path = Path(cfg["few_shot_cache_path"])
+        fallback_domain = cfg.get("fallback_domain", "chemical_hazards")
+        cache = load_exemplar_cache(cache_path)
+        n_fallback = 0
+        formatted = []
+        for r in records:
+            domain = (r.get("metadata") or {}).get("du_domain")
+            text, used_fb = format_prompt_domain_matched(
+                r["prompt"], domain, cache, fallback_domain,
+                few_shot_n, r["prompt_id"],
+            )
+            formatted.append(text)
+            if used_fb:
+                n_fallback += 1
+        print(
+            f"[main] few-shot mode: domain_matched ({few_shot_n}-shot) "
+            f"from {cache_path}; "
+            f"{len(cache)} domains cached; "
+            f"{n_fallback}/{len(records)} prompts used fallback={fallback_domain}",
+            flush=True,
+        )
+    elif few_shot_n > 0:
         rng = random.Random(42)
         formatted = [
             format_prompt_few_shot(r["prompt"], _FEW_SHOT_EXEMPLARS, few_shot_n, rng)
             for r in records
         ]
         print(
-            f"[main] few-shot mode: {few_shot_n}/{len(_FEW_SHOT_EXEMPLARS)} "
-            f"exemplars sampled per prompt (seed=42)",
+            f"[main] few-shot mode: static_list ({few_shot_n}/"
+            f"{len(_FEW_SHOT_EXEMPLARS)} exemplars per prompt, seed=42)",
             flush=True,
         )
     else:
