@@ -1,93 +1,89 @@
 {
   "summary": {
-    "n": 100,
+    "n": 200,
     "label": {
-      "B_irrelevant_or_bad_quality": 14,
-      "B_good_rejected_clear_unsafe": 8,
-      "B_weaker_but_not_unsafe": 75,
-      "tie_or_same_safety": 3
+      "tie_or_same_safety": 7,
+      "B_weaker_but_not_unsafe": 110,
+      "B_irrelevant_or_bad_quality": 73,
+      "B_good_rejected_clear_unsafe": 10
     },
     "by_absolute_label": {
       "safe_completion": {
-        "B_irrelevant_or_bad_quality": 10,
-        "B_weaker_but_not_unsafe": 54,
-        "B_good_rejected_clear_unsafe": 3,
-        "tie_or_same_safety": 1
+        "tie_or_same_safety": 6,
+        "B_weaker_but_not_unsafe": 48,
+        "B_irrelevant_or_bad_quality": 14
       },
-      "unsafe_compliance": {
-        "B_good_rejected_clear_unsafe": 5,
-        "B_weaker_but_not_unsafe": 6,
-        "B_irrelevant_or_bad_quality": 3
-      },
-      "helpful_answer": {
-        "B_weaker_but_not_unsafe": 14,
-        "tie_or_same_safety": 2,
+      "__none__": {
         "B_irrelevant_or_bad_quality": 1
       },
+      "unsafe_compliance": {
+        "B_weaker_but_not_unsafe": 62,
+        "B_irrelevant_or_bad_quality": 55,
+        "B_good_rejected_clear_unsafe": 10,
+        "tie_or_same_safety": 1
+      },
       "hard_refusal": {
-        "B_weaker_but_not_unsafe": 1
+        "B_irrelevant_or_bad_quality": 3
       }
     },
     "by_domain": {
       "network_intelligence": {
-        "B_irrelevant_or_bad_quality": 1,
-        "B_good_rejected_clear_unsafe": 1,
-        "B_weaker_but_not_unsafe": 6,
+        "tie_or_same_safety": 1,
+        "B_weaker_but_not_unsafe": 10,
+        "B_irrelevant_or_bad_quality": 3
+      },
+      "physical_security": {
+        "B_irrelevant_or_bad_quality": 7,
+        "B_weaker_but_not_unsafe": 12,
         "tie_or_same_safety": 1
       },
       "offensive_cybersecurity": {
-        "B_weaker_but_not_unsafe": 7,
-        "B_irrelevant_or_bad_quality": 1,
-        "tie_or_same_safety": 1
+        "B_weaker_but_not_unsafe": 12,
+        "B_irrelevant_or_bad_quality": 5,
+        "B_good_rejected_clear_unsafe": 1
       },
       "privacy_opsec": {
-        "B_weaker_but_not_unsafe": 6,
-        "B_irrelevant_or_bad_quality": 2,
-        "B_good_rejected_clear_unsafe": 1
+        "B_irrelevant_or_bad_quality": 5,
+        "B_weaker_but_not_unsafe": 9
       },
       "biorisks_biosafety": {
-        "B_weaker_but_not_unsafe": 8,
-        "B_irrelevant_or_bad_quality": 1
+        "B_irrelevant_or_bad_quality": 5
       },
       "chemical_hazards": {
-        "B_weaker_but_not_unsafe": 5,
-        "B_irrelevant_or_bad_quality": 2,
-        "B_good_rejected_clear_unsafe": 1
+        "B_irrelevant_or_bad_quality": 12,
+        "B_weaker_but_not_unsafe": 10,
+        "B_good_rejected_clear_unsafe": 5
       },
       "pharmacology_medication_safety": {
-        "B_weaker_but_not_unsafe": 5,
-        "B_irrelevant_or_bad_quality": 2,
-        "B_good_rejected_clear_unsafe": 1
-      },
-      "physical_security": {
-        "B_weaker_but_not_unsafe": 7,
-        "B_irrelevant_or_bad_quality": 1
+        "B_irrelevant_or_bad_quality": 15,
+        "B_weaker_but_not_unsafe": 5
       },
       "surveillance_countersurveillance": {
-        "B_weaker_but_not_unsafe": 5,
-        "B_good_rejected_clear_unsafe": 2,
-        "B_irrelevant_or_bad_quality": 1
+        "B_weaker_but_not_unsafe": 11,
+        "tie_or_same_safety": 1,
+        "B_good_rejected_clear_unsafe": 3,
+        "B_irrelevant_or_bad_quality": 2
       },
       "weapons_ballistics_compliance": {
-        "B_weaker_but_not_unsafe": 6,
         "B_good_rejected_clear_unsafe": 1,
-        "B_irrelevant_or_bad_quality": 1
+        "B_weaker_but_not_unsafe": 7,
+        "B_irrelevant_or_bad_quality": 6
       },
       "disinformation": {
-        "B_weaker_but_not_unsafe": 8
+        "tie_or_same_safety": 3,
+        "B_weaker_but_not_unsafe": 14
       },
       "financial_crime": {
-        "B_weaker_but_not_unsafe": 6,
-        "B_irrelevant_or_bad_quality": 1,
-        "B_good_rejected_clear_unsafe": 1
+        "B_weaker_but_not_unsafe": 13,
+        "B_irrelevant_or_bad_quality": 4,
+        "tie_or_same_safety": 1
       },
       "social_engineering": {
-        "B_weaker_but_not_unsafe": 6,
-        "tie_or_same_safety": 1,
-        "B_irrelevant_or_bad_quality": 1
+        "B_weaker_but_not_unsafe": 7,
+        "B_irrelevant_or_bad_quality": 9
       }
     }
   },
   "decision_outcome": "proceed_dataset_construction",
-  "decision_reason": "strict_usable=8.0%, soft_usable=83.0% (>=60%); flipped_polarity=0.0%. Pool is salvageable; proceed to dataset construction plan."
+  "decision_reason": "strict_usable=5.0%, soft_usable=60.0% (>=60%); flipped_polarity=0.0%. Pool is salvageable; proceed to dataset construction plan."
 }
