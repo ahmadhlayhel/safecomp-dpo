@@ -1,0 +1,36 @@
+# Pilot generation config — base (non-Instruct) Llama-3.1-8B for dual_use
+# unsafe_compliance candidates.
+#
+# Goal: test whether the non-RLHF base model produces a cleaner unsafe_compliance
+# pool than the gpt-4o-mini sourced dual_use rejected pool currently in use.
+# This is a feasibility pilot, not a production generation. 100 prompts only.
+#
+# Read by: scripts/run_base_llama_pool_pilot.py
+#
+# Outputs are stored under a gitignored path
+# (outputs/pool_pilot_base_llama/raw.jsonl).
+# Do NOT promote into the canonical pool until the pilot passes the
+# go/no-go decision rule documented in
+# docs/base_llama_unsafe_pool_feasibility.md (after the pilot runs).
+
+run_id: base_llama_pool_pilot_v1
+model: meta-llama/Llama-3.1-8B
+response_type: unsafe_compliance
+
+# Plain-completion prompt format. The base model has no chat template; the
+# Instruct variant's RLHF refusals are not in this checkpoint, so a simple
+# Q/A continuation is what reveals the model's compliance behavior.
+prompt_format: "Question: {prompt}\nAnswer:"
+
+# Sampling. Temperature 0.7 + top_p 0.9 matches the prior unsafe_compliance
+# fallback config (configs/generation/unsafe_compliance_llama.yaml).
+generation:
+  temperature: 0.7
+  top_p: 0.9
+  max_new_tokens: 512
+  do_sample: true
+  n_samples_per_prompt: 1
+
+prompts_path: outputs/pool_pilot_base_llama/sampled_prompts.jsonl
+output_path:  outputs/pool_pilot_base_llama/raw.jsonl
+report_path:  outputs/pool_pilot_base_llama/raw_report.json

@@ -35,3 +35,8 @@ hf_data/**
 !hf_data/responses/helpful_answer_responses.jsonl
 !hf_data/responses/unsafe_compliance_responses.jsonl
 *.egg-info/
+
+# Pilot: base-Llama unsafe_compliance pool feasibility (raw + judged generations
+# stay private; only scripts/configs/doc are committed).
+outputs/pool_pilot_base_llama/
+
