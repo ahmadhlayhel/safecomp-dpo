@@ -21,7 +21,13 @@ cd "$REPO"
 module purge
 module load cuda-12.4
 export PATH="$HOME/miniforge3/bin:$PATH"
+# Keep HF_HOME at default ($HOME/.cache/huggingface) so the existing HF
+# auth token is discovered. Redirect only the *model file cache* to project
+# storage where there is ~1 TB free (home dir is over quota for the WildGuard
+# 10 GB download). HF_HUB_CACHE overrides just the cache location.
 export HF_HOME="${HF_HOME:-$HOME/.cache/huggingface}"
+export HF_HUB_CACHE=/data/group_data/wehbelab/ahlayhel/hf_cache/hub
+mkdir -p "$HF_HUB_CACHE"
 export TOKENIZERS_PARALLELISM=false
 
 echo "[info] Host: $(hostname)  Date: $(date -Iseconds)"
