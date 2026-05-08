@@ -1,0 +1,42 @@
+# Pilot v2 — base (non-Instruct) Llama-3.1-8B unsafe_compliance generation.
+#
+# v1 finding (2026-05-08): 0% refusals (good) but 39% degenerate_repetition
+# under temperature 0.7, top_p 0.9, max_new_tokens 512, no penalty. That
+# already crossed the pre-declared >25% no-go threshold.
+#
+# v2 changes (degeneracy-only intervention; same prompt set, same
+# stratification, same held-out exclusion):
+#   - shorter max_new_tokens (512 -> 384)
+#   - higher temperature / top_p (more diverse next-token, less likely to
+#     fall into a repetition fixed point)
+#   - repetition_penalty 1.15
+#   - no_repeat_ngram_size 4
+#   - boundary trim on '\nQuestion:' to drop prompt-format leakage where
+#     the base model continues into a fake follow-up Q/A pair
+#
+# No training implications: this is still feasibility, not a pool build.
+
+run_id: base_llama_pool_pilot_v2
+model: meta-llama/Llama-3.1-8B
+response_type: unsafe_compliance
+
+prompt_format: "Question: {prompt}\nAnswer:"
+
+generation:
+  temperature: 0.8
+  top_p: 0.95
+  max_new_tokens: 384
+  do_sample: true
+  n_samples_per_prompt: 1
+  repetition_penalty: 1.15
+  no_repeat_ngram_size: 4
+  trim_at:
+    - "\nQuestion:"
+    - "\n\nQuestion:"
+  stop:
+    - "\nQuestion:"
+    - "\n\nQuestion:"
+
+prompts_path: outputs/pool_pilot_base_llama_v2/sampled_prompts.jsonl
+output_path:  outputs/pool_pilot_base_llama_v2/raw.jsonl
+report_path:  outputs/pool_pilot_base_llama_v2/raw_report.json

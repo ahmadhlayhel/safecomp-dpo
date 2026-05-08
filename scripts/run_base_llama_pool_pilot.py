@@ -63,12 +63,18 @@ def generate_with_vllm(model_id: str, prompts: list[str], gen_cfg: dict):
     llm = LLM(model=model_id, dtype="bfloat16")
     print(f"[backend] vLLM ready in {time.time()-t0:.1f}s", flush=True)
 
-    sp = SamplingParams(
+    sp_kwargs: dict = dict(
         temperature=float(gen_cfg["temperature"]),
         top_p=float(gen_cfg["top_p"]),
         max_tokens=int(gen_cfg["max_new_tokens"]),
         n=1,
     )
+    if "repetition_penalty" in gen_cfg:
+        sp_kwargs["repetition_penalty"] = float(gen_cfg["repetition_penalty"])
+    stops = gen_cfg.get("stop") or []
+    if stops:
+        sp_kwargs["stop"] = list(stops)
+    sp = SamplingParams(**sp_kwargs)
     t0 = time.time()
     outs = llm.generate(prompts, sp)
     elapsed = time.time() - t0
@@ -97,6 +103,12 @@ def generate_with_hf(model_id: str, prompts: list[str], gen_cfg: dict):
     model.eval()
     print(f"[backend] HF ready in {time.time()-t0:.1f}s", flush=True)
 
+    extra: dict = {}
+    if "repetition_penalty" in gen_cfg:
+        extra["repetition_penalty"] = float(gen_cfg["repetition_penalty"])
+    if "no_repeat_ngram_size" in gen_cfg:
+        extra["no_repeat_ngram_size"] = int(gen_cfg["no_repeat_ngram_size"])
+
     texts: list[str] = []
     n_in: list[int] = []
     n_out: list[int] = []
@@ -112,6 +124,7 @@ def generate_with_hf(model_id: str, prompts: list[str], gen_cfg: dict):
                 temperature=float(gen_cfg["temperature"]),
                 top_p=float(gen_cfg["top_p"]),
                 pad_token_id=tok.eos_token_id,
+                **extra,
             )
         new_ids = out[0, enc["input_ids"].shape[1]:]
         texts.append(tok.decode(new_ids, skip_special_tokens=True))
@@ -121,6 +134,20 @@ def generate_with_hf(model_id: str, prompts: list[str], gen_cfg: dict):
             print(f"[gen] {i}/{len(prompts)} done", flush=True)
     elapsed = time.time() - t0
     return texts, n_in, n_out, elapsed
+
+
+def trim_at_boundary(text: str, markers: list[str]) -> str:
+    """Trim text at the earliest occurrence of any boundary marker.
+
+    Used to drop prompt-format leakage where the base model continues into
+    a fake follow-up Q/A pair after answering the real prompt.
+    """
+    earliest: int | None = None
+    for m in markers:
+        i = text.find(m)
+        if i >= 0 and (earliest is None or i < earliest):
+            earliest = i
+    return text if earliest is None else text[:earliest]
 
 
 def main() -> None:
@@ -157,6 +184,12 @@ def main() -> None:
     else:
         texts, n_in, n_out, elapsed = generate_with_hf(model_id, formatted, gen_cfg)
         backend_used = "hf"
+
+    boundary_markers = list(gen_cfg.get("trim_at", []) or [])
+    if boundary_markers:
+        texts = [trim_at_boundary(t, boundary_markers) for t in texts]
+        print(f"[main] applied boundary trim at markers={boundary_markers}",
+              flush=True)
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     now = datetime.now(timezone.utc).isoformat()

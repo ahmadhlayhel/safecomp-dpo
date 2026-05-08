@@ -39,4 +39,5 @@ hf_data/**
 # Pilot: base-Llama unsafe_compliance pool feasibility (raw + judged generations
 # stay private; only scripts/configs/doc are committed).
 outputs/pool_pilot_base_llama/
+outputs/pool_pilot_base_llama_v2/
 

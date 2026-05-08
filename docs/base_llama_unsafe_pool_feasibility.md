@@ -1,76 +1,88 @@
-# Base-Llama unsafe_compliance pool feasibility — pilot v1
+# Base-Llama unsafe_compliance pool feasibility — pilot v1 + v2
 
-_Generated 2026-05-08T11:39:01.886933+00:00_
+_Generated 2026-05-08T11:54:46.127686+00:00_
 
-## Pilot scope
+Aggregate counts only. No raw generations are included in this document, in commits, or in any console output during the pilot.
 
-- Sample size: 100 dual_use prompts.
-- Source pool: `hf_data/prompts/dual_use/dualuse_prompts.jsonl` (2,502 prompts).
-- Held-out exclusion: all 200 dual_use eval prompt_ids (`hf_data/eval/held_out_prompts.jsonl`) excluded from the candidate set.
+## Pilot scope (shared across v1 and v2)
+
+- 100 dual_use training prompts.
+- Source: `hf_data/prompts/dual_use/dualuse_prompts.jsonl` (2,502 prompts).
+- Held-out exclusion: all 200 dual_use eval prompt_ids (`hf_data/eval/held_out_prompts.jsonl`) excluded.
 - Stratification: equal across 12 (author, domain) combos (8 or 9 per combo).
-- Model: `meta-llama/Llama-3.1-8B` (non-Instruct base).
-- Generation: greedy=False, temperature=0.7, top_p=0.9, max_new_tokens=512, n=1 per prompt.
-- Backend: see `outputs/pool_pilot_base_llama/raw_report.json` for the actual backend used.
+- Same random seed in both versions, so v1 and v2 see the same 100 prompts.
+- Model: `meta-llama/Llama-3.1-8B` (non-Instruct base) in both.
+- Backend: HF transformers (vLLM not available in this env).
 
-## Stage 1 — regex / heuristic QC
+## Decoding settings (v1 vs v2)
 
-| QC bucket | count | rate |
-|---|---:|---:|
-| candidate | 59 | 59.0% |
-| likely_refusal | 0 | 0.0% |
-| irrelevant_or_garbled | 41 | 41.0% |
-| empty_or_failed | 0 | 0.0% |
+| setting | v1 | v2 |
+|---|---|---|
+| temperature | 0.7 | 0.8 |
+| top_p | 0.9 | 0.95 |
+| max_new_tokens | 512 | 384 |
+| repetition_penalty | — | 1.15 |
+| no_repeat_ngram_size | — | 4 |
+| trim_at | — | '\nQuestion:', '\n\nQuestion:' |
+| stop | — | '\nQuestion:', '\n\nQuestion:' |
+
+## QC aggregate (v1 vs v2)
+
+| QC bucket | v1 count | v1 rate | v2 count | v2 rate |
+|---|---:|---:|---:|---:|
+| candidate | 59 | 59.0% | 98 | 98.0% |
+| likely_refusal | 0 | 0.0% | 0 | 0.0% |
+| irrelevant_or_garbled | 41 | 41.0% | 2 | 2.0% |
+| empty_or_failed | 0 | 0.0% | 0 | 0.0% |
 
 Per-flag counts (records can carry multiple flags):
 
-| flag | count | rate |
+| flag | v1 count | v1 rate | v2 count | v2 rate |
+|---|---:|---:|---:|---:|
+| empty_or_failed | 0 | 0.0% | 0 | 0.0% |
+| very_short | 2 | 2.0% | 2 | 2.0% |
+| likely_refusal | 0 | 0.0% | 0 | 0.0% |
+| degenerate_repetition | 39 | 39.0% | 0 | 0.0% |
+
+Token usage:
+
+| metric | v1 | v2 |
 |---|---:|---:|
-| empty_or_failed | 0 | 0.0% |
-| very_short | 2 | 2.0% |
-| likely_refusal | 0 | 0.0% |
-| degenerate_repetition | 39 | 39.0% |
+| avg new_tokens | 295.8 | 238.5 |
 
-### QC-stage interpretation (cautious)
+## Per-domain QC rates
 
-- **Refusal hurdle cleared.** 0/100 generations match any refusal regex.
-  The non-Instruct base model has no RLHF refusal priors — exactly the
-  property we wanted relative to the Instruct-fallback config that the
-  prior unsafe_compliance pool used.
-- **Degeneracy is the dominant failure mode.** 39% of generations carry
-  the `degenerate_repetition` flag (4-gram repeated >5 times), which is
-  the well-known base-model continuation failure. This is *above* the
-  pre-declared `>25 % degenerate/empty ⇒ no-go` threshold, before the
-  LLM judge has even seen the data.
-- **Best-case ceiling on usable yield is ~59%.** Only 59 records survive
-  QC as "candidate"; even if the LLM judge labeled every candidate as
-  `unsafe_compliance`, the overall `unsafe_compliance` rate would be
-  ≈59 % — just under the `≥60 %` go bar. Realistically the judge will
-  reclassify some candidates as `safe_completion` or `helpful_answer`,
-  pushing the achievable rate lower.
-- **Net read.** The QC stats already make a clean **go** unlikely. The
-  most plausible outcomes are **ambiguous** (worth expanding to 200 to
-  resolve) or **no-go** (degeneracy + low yield kill the approach for
-  this prompt set with these decoding settings). Worth running the LLM
-  judge to confirm.
+| domain | v1 n | v1 candidate | v1 degen | v2 n | v2 candidate | v2 degen |
+|---|---:|---:|---:|---:|---:|---:|
+| biorisks_biosafety | 9 | 33.3% | 66.7% | 9 | 100.0% | 0.0% |
+| chemical_hazards | 8 | 75.0% | 25.0% | 8 | 100.0% | 0.0% |
+| disinformation | 8 | 50.0% | 50.0% | 8 | 100.0% | 0.0% |
+| financial_crime | 8 | 50.0% | 50.0% | 8 | 100.0% | 0.0% |
+| network_intelligence | 9 | 55.6% | 44.4% | 9 | 100.0% | 0.0% |
+| offensive_cybersecurity | 9 | 66.7% | 33.3% | 9 | 100.0% | 0.0% |
+| pharmacology_medication_safety | 8 | 87.5% | 12.5% | 8 | 87.5% | 12.5% |
+| physical_security | 8 | 62.5% | 37.5% | 8 | 100.0% | 0.0% |
+| privacy_opsec | 9 | 77.8% | 22.2% | 9 | 88.9% | 11.1% |
+| social_engineering | 8 | 62.5% | 37.5% | 8 | 100.0% | 0.0% |
+| surveillance_countersurveillance | 8 | 62.5% | 37.5% | 8 | 100.0% | 0.0% |
+| weapons_ballistics_compliance | 8 | 25.0% | 75.0% | 8 | 100.0% | 0.0% |
 
-## Stage 2 — LLM judge
+## Decision rule (pre-declared)
 
-Judge step has **not run yet** (no API key in pilot env).
-Run `scripts/run_pool_pilot_judge.py` from a host with `OPENAI_API_KEY` set to fill in this section.
+- **no_go**     — v2 `degenerate_repetition` rate > 25%
+- **judge_v2**  — v2 degenerate <= 25% AND v2 candidate rate >= 70%
+- **in_between** — neither (consider one v3 only if there is an obvious lever; otherwise stop)
 
-## Comparison to the current dual_use rejected pool
+### Outcome: `judge_v2`
 
-- Current pool: `gpt-4o-mini`-sourced (2,502 records).
-- Audit observation: the dual_use slice was dominated by analytical/helpful content rather than genuine unsafe_compliance.
-- The pilot's `unsafe_compliance` rate (Stage 2) is the directly comparable number.
+v2 degenerate = 0.0% (<=25), candidate = 98.0% (>=70). Proceed to LLM-judge step on v2.
 
-## Decision
+### Recommendation
 
-- Pre-declared rule: go ≥ 60% unsafe_compliance ∧ ≤ 10% hard_refusal ∧ ≤ 25% degenerate; no-go < 30% unsafe_compliance ∨ > 25% degenerate.
-- **Outcome: `pending_judge`** — LLM judge has not been run yet; only QC-stage stats are available.
-
+- Send v2 raw + qc + sampled_prompts to a host with `OPENAI_API_KEY` set and run `scripts/run_pool_pilot_judge.py` (input: `outputs/pool_pilot_base_llama_v2/qc.jsonl`, prompts: `outputs/pool_pilot_base_llama_v2/sampled_prompts.jsonl`, output: `outputs/pool_pilot_base_llama_v2/judged.jsonl`).
+- After judge runs, compare against the 60% / 30% unsafe_compliance bars from the v1 decision rule; only then consider a retraining ablation.
 
 ## Privacy
 
-- Raw generations stored only at `outputs/pool_pilot_base_llama/` (gitignored).
-- This document contains aggregate counts only; no raw text.
+- Raw v1 + v2 generations stored only at `outputs/pool_pilot_base_llama{,_v2}/` (gitignored).
+- This document and its summary JSON contain aggregate counts only.
