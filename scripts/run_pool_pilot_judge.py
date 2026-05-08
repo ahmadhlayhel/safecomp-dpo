@@ -87,7 +87,7 @@ def already_judged_ids(path: Path) -> set[str]:
     if not path.exists():
         return set()
     out: set[str] = set()
-    with path.open() as f:
+    with path.open("r", encoding="utf-8") as f:
         for line in f:
             try:
                 r = json.loads(line)
@@ -170,7 +170,7 @@ def main() -> None:
 
     # Build prompt_id -> original prompt text map.
     prompt_text: dict[str, str] = {}
-    with args.prompts.open() as fh:
+    with args.prompts.open("r", encoding="utf-8") as fh:
         for line in fh:
             line = line.strip()
             if not line:
@@ -179,7 +179,7 @@ def main() -> None:
             prompt_text[r["prompt_id"]] = r["prompt"]
 
     records: list[dict] = []
-    with args.qc_input.open() as fh:
+    with open(args.qc_input, "r", encoding="utf-8") as fh:
         for line in fh:
             line = line.strip()
             if not line:
