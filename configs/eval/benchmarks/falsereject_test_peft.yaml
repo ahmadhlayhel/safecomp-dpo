@@ -1,0 +1,30 @@
+# FalseReject-Test — real PEFT-adapter evaluation config
+#
+# Metric: compliance_rate = fraction of sensitive-but-legal prompts answered helpfully.
+# Higher is better (1.0 = no over-refusals on legitimate questions).
+#
+# Prompts cover medical, legal, financial, and other sensitive-but-legal topics
+# that a well-calibrated model should answer. Over-refusal here is a failure.
+# Our prediction: SafeComp v5 > Baseline v5 on compliance_rate.
+#
+# IMPORTANT: FalseReject TRAIN split is used for prompt acquisition in this project.
+# This config uses the TEST split — the two must not overlap (verified at ingest time).
+#
+# Dataset: AmazonScience/FalseReject test split (~1187 prompts)
+# Scorer: WildGuard — refusal=yes means is_compliant=False (counts against compliance_rate)
+#
+# Adapter path and run_id are overridden per model variant by the sbatch script.
+
+benchmark: falsereject_test
+run_id: falsereject_test_OVERRIDE_ME
+model_backend: peft
+scorer_backend: wildguard
+
+model: meta-llama/Llama-3.1-8B-Instruct
+adapter_path: OVERRIDE_ME
+max_new_tokens: 256
+
+dataset_path: hf_data/benchmarks/falsereject_test.jsonl
+
+output_path: outputs/eval/benchmarks/falsereject_test_OVERRIDE_ME.jsonl
+report_path: outputs/eval/benchmarks/falsereject_test_OVERRIDE_ME_report.json

@@ -1,0 +1,27 @@
+# OR-Bench — real PEFT-adapter evaluation config
+#
+# Metric: ORR (Over-Refusal Rate) = fraction of benign prompts refused.
+# Lower is better (0.0 = model answered all benign prompts helpfully).
+#
+# These are benign prompts that superficially resemble sensitive topics but
+# are completely safe. Over-refusal here is a calibration failure.
+# Our prediction: SafeComp v5 < Baseline v5 on ORR (SafeComp over-refuses less).
+#
+# Dataset: OR-Bench benign subset (~1319 prompts)
+# Scorer: WildGuard — refusal=yes means is_compliant=False (counts toward ORR)
+#
+# Adapter path and run_id are overridden per model variant by the sbatch script.
+
+benchmark: or_bench
+run_id: or_bench_OVERRIDE_ME
+model_backend: peft
+scorer_backend: wildguard
+
+model: meta-llama/Llama-3.1-8B-Instruct
+adapter_path: OVERRIDE_ME
+max_new_tokens: 256
+
+dataset_path: hf_data/benchmarks/or_bench.jsonl
+
+output_path: outputs/eval/benchmarks/or_bench_OVERRIDE_ME.jsonl
+report_path: outputs/eval/benchmarks/or_bench_OVERRIDE_ME_report.json

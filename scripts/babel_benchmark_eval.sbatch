@@ -70,10 +70,10 @@ case "$BENCHMARK" in
     CONFIG="configs/eval/benchmarks/xstest_peft.yaml"
     ;;
   or_bench)
-    CONFIG="configs/eval/benchmarks/or_bench.yaml"
+    CONFIG="configs/eval/benchmarks/or_bench_peft.yaml"
     ;;
   falsereject_test)
-    CONFIG="configs/eval/benchmarks/falsereject_test.yaml"
+    CONFIG="configs/eval/benchmarks/falsereject_test_peft.yaml"
     ;;
   *)
     echo "Unknown benchmark: $BENCHMARK" >&2
