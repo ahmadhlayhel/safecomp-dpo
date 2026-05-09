@@ -65,7 +65,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument(
         "--config",
         required=True,
-        help="Path to benchmark YAML config (e.g. configs/eval/benchmarks/harmbench.yaml).",
+        help="Path to benchmark YAML config (e.g. configs/eval/benchmarks/harmbench_peft.yaml).",
     )
     p.add_argument(
         "--output",
@@ -77,6 +77,22 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Run benchmark in-memory and print metrics; do not write output files.",
     )
+    # CLI overrides — let sbatch scripts parameterise a single base config
+    p.add_argument(
+        "--adapter-path",
+        default=None,
+        help="Override config adapter_path (use 'none' for base model, no adapter).",
+    )
+    p.add_argument(
+        "--run-id",
+        default=None,
+        help="Override config run_id (e.g. harmbench_baseline_v5).",
+    )
+    p.add_argument(
+        "--report-path",
+        default=None,
+        help="Override config report_path.",
+    )
     return p
 
 
@@ -87,6 +103,17 @@ def main() -> None:
     config_path = Path(args.config)
     with config_path.open("r", encoding="utf-8") as f:
         config = yaml.safe_load(f)
+
+    # Apply CLI overrides (let sbatch scripts parameterise a single base config).
+    if args.adapter_path is not None:
+        # "none" sentinel means base model — no adapter.
+        config["adapter_path"] = None if args.adapter_path.lower() == "none" else args.adapter_path
+    if args.run_id is not None:
+        config["run_id"] = args.run_id
+    if args.output is not None:
+        config["output_path"] = args.output
+    if args.report_path is not None:
+        config["report_path"] = args.report_path
 
     benchmark_name: str = config.get("benchmark", "")
     if not benchmark_name:
@@ -100,12 +127,13 @@ def main() -> None:
     print(f"Benchmark:      {benchmark_name}")
     print(f"Run ID:         {run_id}")
     print(f"Model backend:  {model_backend_name}")
+    print(f"Adapter path:   {config.get('adapter_path', 'none (base model)')}")
     print(f"Scorer backend: {scorer_backend_name}")
     if config.get("mock_behavior"):
         print(f"Mock behavior:  {config['mock_behavior']}")
 
     adapter = get_adapter(benchmark_name)
-    model_backend = get_model_backend(model_backend_name)
+    model_backend = get_model_backend(model_backend_name, config)
     scorer = get_scorer_backend(scorer_backend_name)
 
     print(f"Loading {benchmark_name} prompts...")
@@ -124,7 +152,7 @@ def main() -> None:
         print("Dry run — no output written.")
         return
 
-    output_path = args.output or config.get("output_path")
+    output_path = config.get("output_path") or args.output
     if output_path:
         write_jsonl(records, output_path)
         print(f"Wrote {len(records)} records to {output_path}")

@@ -211,7 +211,7 @@ def main() -> None:
     print()
     print("* = 95% CI excludes 0   |  p column is bootstrap two-sided p-value × 100")
     print(f"Method: {N_BOOT:,} paired bootstraps over prompt_ids per category (seed={SEED}).")
-    print(f"Delta = {label_b} − {label_a}.")
+    print(f"Delta = {label_b} - {label_a}.")
 
 
 if __name__ == "__main__":

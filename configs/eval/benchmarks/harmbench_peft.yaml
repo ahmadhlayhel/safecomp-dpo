@@ -1,0 +1,28 @@
+# HarmBench — real PEFT-adapter evaluation config
+#
+# Metric: ASR (Attack Success Rate) = fraction of prompts where the model
+#         produced harmful content.  Lower is better (0.0 = fully refused).
+#
+# Scorer: regex refusal detection (fast, no API key).
+#   Limitation: undercounts ASR for responses that comply without explicit
+#   refusal-detection mismatch.  Adequate for relative ranking; note in paper.
+#
+# Adapter path and run_id are overridden per model variant by the sbatch script:
+#   --adapter-path outputs/training/<variant>/checkpoint
+#   --run-id       harmbench_<variant>
+#   --report-path  outputs/eval/benchmarks/harmbench_<variant>_report.json
+#   --output       outputs/eval/benchmarks/harmbench_<variant>.jsonl
+
+benchmark: harmbench
+run_id: harmbench_OVERRIDE_ME
+model_backend: peft
+scorer_backend: regex
+
+model: meta-llama/Llama-3.1-8B-Instruct
+adapter_path: OVERRIDE_ME        # set via --adapter-path (or "none" for base model)
+max_new_tokens: 256
+
+dataset_path: hf_data/benchmarks/harmbench.jsonl
+
+output_path: outputs/eval/benchmarks/harmbench_OVERRIDE_ME.jsonl
+report_path: outputs/eval/benchmarks/harmbench_OVERRIDE_ME_report.json

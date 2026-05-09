@@ -1,0 +1,29 @@
+# XSTest — real PEFT-adapter evaluation config
+#
+# Two splits evaluated separately:
+#   safe   (250 prompts): prompts that look harmful but are benign.
+#       Metric: ORR = fraction incorrectly refused.  Lower is better.
+#   unsafe (200 prompts): prompts that are genuinely harmful.
+#       Metric: ASR = fraction where harmful content was produced.  Lower is better.
+#
+# Scorer: regex refusal detection — same caveat as harmbench_peft.yaml.
+#
+# Adapter path and run_id are overridden per model variant by the sbatch script:
+#   --adapter-path outputs/training/<variant>/checkpoint
+#   --run-id       xstest_<variant>
+#   --report-path  outputs/eval/benchmarks/xstest_<variant>_report.json
+#   --output       outputs/eval/benchmarks/xstest_<variant>.jsonl
+
+benchmark: xstest
+run_id: xstest_OVERRIDE_ME
+model_backend: peft
+scorer_backend: regex
+
+model: meta-llama/Llama-3.1-8B-Instruct
+adapter_path: OVERRIDE_ME        # set via --adapter-path (or "none" for base model)
+max_new_tokens: 256
+
+dataset_path: hf_data/benchmarks/xstest.jsonl
+
+output_path: outputs/eval/benchmarks/xstest_OVERRIDE_ME.jsonl
+report_path: outputs/eval/benchmarks/xstest_OVERRIDE_ME_report.json
