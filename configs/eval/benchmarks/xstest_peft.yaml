@@ -17,7 +17,7 @@
 benchmark: xstest
 run_id: xstest_OVERRIDE_ME
 model_backend: peft
-scorer_backend: regex
+scorer_backend: wildguard   # publication-quality; loads allenai/wildguard (7B) after generation
 
 model: meta-llama/Llama-3.1-8B-Instruct
 adapter_path: OVERRIDE_ME        # set via --adapter-path (or "none" for base model)

@@ -44,6 +44,7 @@ try:
         get_model_backend,
         get_scorer_backend,
         run_benchmark,
+        run_benchmark_from_responses,
     )
     from safecomp_dpo.io import write_jsonl
 except ImportError:
@@ -54,6 +55,7 @@ except ImportError:
         get_model_backend,
         get_scorer_backend,
         run_benchmark,
+        run_benchmark_from_responses,
     )
     from safecomp_dpo.io import write_jsonl
 
@@ -134,15 +136,30 @@ def main() -> None:
 
     adapter = get_adapter(benchmark_name)
     model_backend = get_model_backend(model_backend_name, config)
-    scorer = get_scorer_backend(scorer_backend_name)
 
     print(f"Loading {benchmark_name} prompts...")
     prompts = adapter.load(config)
     print(f"  {len(prompts)} prompts loaded")
 
-    print("Running benchmark...")
-    records = run_benchmark(prompts, model_backend, scorer, config, str(config_path))
-    print(f"  {len(records)} records produced")
+    # When using WildGuard as scorer alongside a PEFT generation backend, both
+    # are 7B models.  Loading them simultaneously exceeds 40GB VRAM.  So we
+    # generate all responses first, unload the generation model, then load
+    # WildGuard for scoring.  For mock/regex scorers this has no effect.
+    print("Generating responses...")
+    responses = _generate_all(prompts, model_backend, config)
+    print(f"  {len(responses)} responses generated")
+
+    # Unload generation model before loading scorer (frees VRAM).
+    _try_unload(model_backend)
+
+    print(f"Loading scorer ({scorer_backend_name})...")
+    scorer = get_scorer_backend(scorer_backend_name)
+
+    print("Scoring responses...")
+    records = run_benchmark_from_responses(
+        prompts, responses, model_backend, scorer, config, str(config_path)
+    )
+    print(f"  {len(records)} records scored")
 
     print("Computing metrics...")
     metrics = adapter.compute_metrics(records)
@@ -165,6 +182,36 @@ def main() -> None:
         print(f"Wrote report to {report_path}")
 
     print("Done.")
+
+
+def _generate_all(prompts, model_backend, config) -> list[str]:
+    """Generate responses for all prompts, printing progress every 50."""
+    responses = []
+    n = len(prompts)
+    for i, prompt in enumerate(prompts, 1):
+        call_cfg = dict(config)
+        if prompt.split is not None:
+            call_cfg["_mock_split"] = prompt.split
+        responses.append(model_backend.generate(prompt.prompt, call_cfg))
+        if i % 50 == 0 or i == n:
+            print(f"  [gen] {i}/{n}", flush=True)
+    return responses
+
+
+def _try_unload(model_backend) -> None:
+    """Delete cached model weights to free VRAM before loading the scorer."""
+    import gc  # noqa: PLC0415
+    if hasattr(model_backend, "_model") and model_backend._model is not None:
+        try:
+            import torch  # noqa: PLC0415
+            del model_backend._model
+            model_backend._model = None
+            model_backend._tok = None
+            gc.collect()
+            torch.cuda.empty_cache()
+            print("[run_benchmark] generation model unloaded from VRAM", flush=True)
+        except Exception:
+            pass
 
 
 def _print_metrics(metrics: dict) -> None:

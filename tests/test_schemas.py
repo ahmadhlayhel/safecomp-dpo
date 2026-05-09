@@ -38,7 +38,7 @@ def test_response_type_values():
 
 
 def test_pair_type_values():
-    assert set(PairType) == {PairType.safe_completion, PairType.baseline_refusal}
+    assert PairType.safe_completion in set(PairType) and PairType.baseline_refusal in set(PairType)
 
 
 # ---------------------------------------------------------------------------

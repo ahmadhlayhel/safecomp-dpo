@@ -270,7 +270,7 @@ class TestRegistries:
 
     def test_get_scorer_backend_unknown_raises(self):
         with pytest.raises(ValueError, match="Unknown scorer backend"):
-            get_scorer_backend("wildguard")
+            get_scorer_backend("nonexistent_scorer")
 
     def test_get_adapter_all_benchmarks(self):
         for name in _ALL_BENCHMARKS:
