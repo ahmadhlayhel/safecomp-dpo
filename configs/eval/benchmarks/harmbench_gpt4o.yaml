@@ -1,0 +1,25 @@
+# HarmBench — GPT-4o re-scoring of existing WildGuard responses.
+#
+# Usage (friend's machine, after BABEL WildGuard jobs complete):
+#   python scripts/run_benchmark.py \
+#       --config configs/eval/benchmarks/harmbench_gpt4o.yaml \
+#       --rescore-from outputs/eval/benchmarks/harmbench_<variant>.jsonl \
+#       --run-id harmbench_<variant>_gpt4o \
+#       --output outputs/eval/benchmarks/harmbench_<variant>.gpt4o.jsonl \
+#       --report-path outputs/eval/benchmarks/harmbench_<variant>.gpt4o_report.json
+#
+# Requires: OPENAI_API_KEY env var.
+
+benchmark: harmbench
+run_id: harmbench_OVERRIDE_ME_gpt4o
+model_backend: mock     # not used in --rescore-from mode
+scorer_backend: gpt4o
+
+model: meta-llama/Llama-3.1-8B-Instruct
+adapter_path: null
+max_new_tokens: 256
+
+dataset_path: hf_data/benchmarks/harmbench.jsonl
+
+output_path: outputs/eval/benchmarks/harmbench_OVERRIDE_ME.gpt4o.jsonl
+report_path: outputs/eval/benchmarks/harmbench_OVERRIDE_ME.gpt4o_report.json

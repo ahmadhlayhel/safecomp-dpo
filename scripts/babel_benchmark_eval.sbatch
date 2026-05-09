@@ -29,6 +29,14 @@ REPO=/data/group_data/wehbelab/ahlayhel/safecomp-dpo
 
 cd "$REPO"
 
+module purge
+module load cuda-12.4
+export PATH="$HOME/miniforge3/bin:$PATH"
+export HF_HOME="${HF_HOME:-$HOME/.cache/huggingface}"
+# Single consolidated cache: Llama-3.1-8B-Instruct + allenai/wildguard
+export HF_HUB_CACHE=/data/group_data/wehbelab/ahlayhel/huggingface_cache/hub
+export TOKENIZERS_PARALLELISM=false
+
 # ── Adapter paths ──────────────────────────────────────────────────────────────
 case "$MODEL_VARIANT" in
   baseline_v1)
@@ -78,8 +86,17 @@ RUN_ID="${BENCHMARK}_${MODEL_VARIANT}"
 OUTPUT="outputs/eval/benchmarks/${RUN_ID}.jsonl"
 REPORT="outputs/eval/benchmarks/${RUN_ID}_report.json"
 
-mkdir -p outputs/eval/benchmarks
+mkdir -p outputs/eval/benchmarks hf_data/benchmarks
 mkdir -p /data/group_data/wehbelab/ahlayhel/logs
+
+# Ingest benchmark data if not already present (one-time download).
+DATA_FILE="hf_data/benchmarks/${BENCHMARK}.jsonl"
+if [ ! -f "$DATA_FILE" ]; then
+    echo "Ingesting ${BENCHMARK} dataset..."
+    python3 scripts/ingest_benchmark_data.py --benchmark "$BENCHMARK"
+else
+    echo "Dataset already present: $DATA_FILE"
+fi
 
 echo "=== safecomp benchmark eval ==="
 echo "Benchmark:     $BENCHMARK"

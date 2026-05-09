@@ -95,6 +95,22 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help="Override config report_path.",
     )
+    p.add_argument(
+        "--rescore-from",
+        default=None,
+        metavar="JSONL",
+        help=(
+            "Skip generation entirely. Load (prompt, response) pairs from an "
+            "existing BenchmarkRecord JSONL and re-score with the configured "
+            "scorer. Useful for applying GPT-4o scoring to WildGuard-scored "
+            "output without running inference again."
+        ),
+    )
+    p.add_argument(
+        "--scorer",
+        default=None,
+        help="Override scorer_backend from config (e.g. gpt4o, wildguard, regex).",
+    )
     return p
 
 
@@ -116,6 +132,8 @@ def main() -> None:
         config["output_path"] = args.output
     if args.report_path is not None:
         config["report_path"] = args.report_path
+    if args.scorer is not None:
+        config["scorer_backend"] = args.scorer
 
     benchmark_name: str = config.get("benchmark", "")
     if not benchmark_name:
@@ -135,22 +153,31 @@ def main() -> None:
         print(f"Mock behavior:  {config['mock_behavior']}")
 
     adapter = get_adapter(benchmark_name)
-    model_backend = get_model_backend(model_backend_name, config)
 
-    print(f"Loading {benchmark_name} prompts...")
-    prompts = adapter.load(config)
-    print(f"  {len(prompts)} prompts loaded")
+    if args.rescore_from:
+        # ── Re-score mode: load existing responses, skip generation ───────────
+        print(f"Re-score mode: loading responses from {args.rescore_from}")
+        prompts, responses = _load_responses_jsonl(args.rescore_from)
+        print(f"  {len(prompts)} (prompt, response) pairs loaded")
+        # Use a mock model backend as a placeholder (no generation happens).
+        from safecomp_dpo.benchmarks import MockBenchmarkModelBackend  # noqa: PLC0415
+        model_backend = MockBenchmarkModelBackend()
+    else:
+        model_backend = get_model_backend(model_backend_name, config)
+        print(f"Loading {benchmark_name} prompts...")
+        prompts = adapter.load(config)
+        print(f"  {len(prompts)} prompts loaded")
 
-    # When using WildGuard as scorer alongside a PEFT generation backend, both
-    # are 7B models.  Loading them simultaneously exceeds 40GB VRAM.  So we
-    # generate all responses first, unload the generation model, then load
-    # WildGuard for scoring.  For mock/regex scorers this has no effect.
-    print("Generating responses...")
-    responses = _generate_all(prompts, model_backend, config)
-    print(f"  {len(responses)} responses generated")
+        # When using WildGuard as scorer alongside a PEFT generation backend, both
+        # are 7B models.  Loading them simultaneously exceeds 40GB VRAM.  So we
+        # generate all responses first, unload the generation model, then load
+        # WildGuard for scoring.  For mock/regex scorers this has no effect.
+        print("Generating responses...")
+        responses = _generate_all(prompts, model_backend, config)
+        print(f"  {len(responses)} responses generated")
 
-    # Unload generation model before loading scorer (frees VRAM).
-    _try_unload(model_backend)
+        # Unload generation model before loading scorer (frees VRAM).
+        _try_unload(model_backend)
 
     print(f"Loading scorer ({scorer_backend_name})...")
     scorer = get_scorer_backend(scorer_backend_name)
@@ -182,6 +209,32 @@ def main() -> None:
         print(f"Wrote report to {report_path}")
 
     print("Done.")
+
+
+def _load_responses_jsonl(path: str):
+    """Load (BenchmarkPrompt, response_str) pairs from an existing scored JSONL.
+
+    Used by --rescore-from to skip generation and only re-run the scorer.
+    """
+    import json as _json  # noqa: PLC0415
+    from safecomp_dpo.benchmarks import BenchmarkPrompt  # noqa: PLC0415
+    prompts_out = []
+    responses_out = []
+    with open(path, encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            obj = _json.loads(line)
+            prompts_out.append(BenchmarkPrompt(
+                prompt_id=obj.get("metadata", {}).get("prompt_id", obj.get("record_id", "")),
+                benchmark=obj.get("benchmark", ""),
+                prompt=obj["prompt"],
+                split=obj.get("split"),
+                metadata=obj.get("metadata", {}),
+            ))
+            responses_out.append(obj["response"])
+    return prompts_out, responses_out
 
 
 def _generate_all(prompts, model_backend, config) -> list[str]:

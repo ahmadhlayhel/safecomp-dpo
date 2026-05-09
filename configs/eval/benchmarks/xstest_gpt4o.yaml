@@ -1,0 +1,25 @@
+# XSTest — GPT-4o re-scoring of existing WildGuard responses.
+#
+# Usage (friend's machine, after BABEL WildGuard jobs complete):
+#   python scripts/run_benchmark.py \
+#       --config configs/eval/benchmarks/xstest_gpt4o.yaml \
+#       --rescore-from outputs/eval/benchmarks/xstest_<variant>.jsonl \
+#       --run-id xstest_<variant>_gpt4o \
+#       --output outputs/eval/benchmarks/xstest_<variant>.gpt4o.jsonl \
+#       --report-path outputs/eval/benchmarks/xstest_<variant>.gpt4o_report.json
+#
+# Requires: OPENAI_API_KEY env var.
+
+benchmark: xstest
+run_id: xstest_OVERRIDE_ME_gpt4o
+model_backend: mock     # not used in --rescore-from mode
+scorer_backend: gpt4o
+
+model: meta-llama/Llama-3.1-8B-Instruct
+adapter_path: null
+max_new_tokens: 256
+
+dataset_path: hf_data/benchmarks/xstest.jsonl
+
+output_path: outputs/eval/benchmarks/xstest_OVERRIDE_ME.gpt4o.jsonl
+report_path: outputs/eval/benchmarks/xstest_OVERRIDE_ME.gpt4o_report.json
