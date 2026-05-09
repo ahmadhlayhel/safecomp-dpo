@@ -1,0 +1,50 @@
+# Baseline Refusal-DPO with v5 base-Llama rejected pool — BABEL.
+#
+# Differs from baseline_babel.yaml only in:
+#   - dataset_path / output_dir / checkpoint_dir / report_path point at v5
+#   - description notes the rejected-pool source
+#
+# Training hyperparameters are identical to the prior baseline run so any
+# delta against the existing baseline_babel checkpoint is attributable to
+# the rejected-pool swap, not optimizer changes.
+
+regime: baseline
+description: "Baseline Refusal-DPO (v5 base-Llama rejected pool replaces gpt-4o-mini-sourced unsafe_compliance for dual_use; eval-excluded)"
+model: meta-llama/Llama-3.1-8B-Instruct
+backend: trl_dpo
+
+pair_types: []
+categories: []
+
+# Training hyperparameters (matches baseline_babel.yaml exactly)
+num_train_epochs: 3
+per_device_train_batch_size: 4
+gradient_accumulation_steps: 4       # effective batch = 1 GPU * 4 * 4 = 16
+learning_rate: 5.0e-6
+lr_scheduler_type: cosine
+warmup_ratio: 0.1
+beta: 0.1
+loss_type: sigmoid
+max_length: 1024
+max_prompt_length: 512
+logging_steps: 10
+save_strategy: epoch
+bf16: true
+gradient_checkpointing: true
+optim: paged_adamw_8bit
+
+# LoRA / QLoRA
+use_lora: true
+lora_r: 16
+lora_alpha: 16
+lora_target_modules: all-linear
+lora_dropout: 0.05
+modules_to_save:
+  - lm_head
+  - embed_tokens
+use_4bit: true
+
+# Output paths (distinct from baseline_babel)
+output_dir: outputs/training/baseline_v5_basepool_babel
+report_path: outputs/training/baseline_v5_basepool_babel/training_report.json
+checkpoint_dir: outputs/training/baseline_v5_basepool_babel/checkpoint

@@ -49,6 +49,11 @@ case "$REGIME" in
     PROMPTS=hf_data/eval/held_out_prompts.jsonl
     DRY_RUN=""
     ;;
+  baseline_v5_basepool|safecomp_v5_basepool)
+    CONFIG=configs/eval/${REGIME}_peft.yaml
+    PROMPTS=hf_data/eval/held_out_prompts.jsonl
+    DRY_RUN=""
+    ;;
   dry-baseline)
     CONFIG=configs/eval/baseline_peft.yaml
     PROMPTS=hf_data/eval/dry_run_prompts.jsonl
@@ -60,7 +65,7 @@ case "$REGIME" in
     DRY_RUN="--dry-run"
     ;;
   *)
-    echo "Unknown regime: $REGIME. Use baseline | safecomp | dry-baseline | dry-safecomp" >&2
+    echo "Unknown regime: $REGIME. Use baseline | safecomp | base | baseline_strict | safecomp_dualuse_x2 | baseline_v5_basepool | safecomp_v5_basepool | dry-baseline | dry-safecomp" >&2
     exit 1
     ;;
 esac

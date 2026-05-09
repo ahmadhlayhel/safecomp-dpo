@@ -1,0 +1,45 @@
+# Pilot v5 — large-pool scale of v4 methodology for DPO dataset construction.
+#
+# v4 (200 prompts) → cleared the pre-declared pairwise audit go bar at
+# soft_usable=60.0%. v5 scales the same domain-matched 2-shot pipeline to
+# all available prompts in 9 high-and-mid-yield domains (excluding the 3
+# domains v4 showed are unsalvageable: biorisks, pharma, social_engineering).
+#
+# Sample shape (built deterministically by the v5 sampler):
+#   9 domains, 1,748 unique dual_use prompts, 1,973 generation tasks
+#   (3 sub-200 domains multi-sampled with sample_index=2 to reach ~200).
+# Held-out eval IDs (200 dual_use) excluded — DPO training data must not
+# overlap with the evaluation set used for baseline / safecomp / strict /
+# x2 score reporting.
+#
+# Reuses v4's exemplar cache (10 domains, 2 exemplars each, drawn from v3
+# raw outputs). weapons_ballistics_compliance has no own cache entry and
+# falls back to chemical_hazards per fallback_domain.
+
+run_id: base_llama_pool_pilot_v5
+model: meta-llama/Llama-3.1-8B
+response_type: unsafe_compliance
+
+few_shot_n: 2
+few_shot_mode: domain_matched
+few_shot_cache_path: outputs/pool_pilot_base_llama_v4/exemplar_cache.jsonl
+fallback_domain: chemical_hazards
+
+generation:
+  temperature: 0.9
+  top_p: 0.95
+  max_new_tokens: 384
+  do_sample: true
+  n_samples_per_prompt: 1
+  repetition_penalty: 1.15
+  no_repeat_ngram_size: 4
+  trim_at:
+    - "\nQuestion:"
+    - "\n\nQuestion:"
+  stop:
+    - "\nQuestion:"
+    - "\n\nQuestion:"
+
+prompts_path: outputs/pool_pilot_base_llama_v5/sampled_prompts.jsonl
+output_path:  outputs/pool_pilot_base_llama_v5/raw.jsonl
+report_path:  outputs/pool_pilot_base_llama_v5/raw_report.json

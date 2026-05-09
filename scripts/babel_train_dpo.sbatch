@@ -42,12 +42,16 @@ case "$REGIME" in
     CONFIG="configs/training/safecomp_dualuse_x2_babel.yaml"
     DATASET="hf_data/dpo/safecomp_dualuse_x2_dpo_dataset.jsonl"
     ;;
+  baseline_v5_basepool|safecomp_v5_basepool)
+    CONFIG="configs/training/${REGIME}_babel.yaml"
+    DATASET="hf_data/dpo/${REGIME}_dpo_dataset.jsonl"
+    ;;
   smoke)
     CONFIG="configs/training/safecomp_smoke_babel.yaml"
     DATASET="hf_data/dpo/smoke_dpo_dataset.jsonl"
     ;;
   *)
-    echo "Usage: sbatch $0 {baseline|safecomp|baseline_strict|safecomp_dualuse_x2|smoke}" >&2
+    echo "Usage: sbatch $0 {baseline|safecomp|baseline_strict|safecomp_dualuse_x2|baseline_v5_basepool|safecomp_v5_basepool|smoke}" >&2
     exit 2
     ;;
 esac

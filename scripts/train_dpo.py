@@ -53,6 +53,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from collections import defaultdict
 from pathlib import Path
@@ -254,7 +255,15 @@ class TRLDPOBackend:
         model_kwargs: dict[str, Any] = {"torch_dtype": torch.bfloat16}
         if bnb_config is not None:
             model_kwargs["quantization_config"] = bnb_config
-            model_kwargs["device_map"] = "auto"
+            # Multi-GPU/DDP: pin each rank to its own device so the 4-bit
+            # weights aren't sharded across all visible GPUs (which would
+            # OOM under DDP). Single-GPU runs (no LOCAL_RANK) keep the
+            # prior "auto" behavior.
+            local_rank = int(os.environ.get("LOCAL_RANK", -1))
+            if local_rank >= 0:
+                model_kwargs["device_map"] = {"": local_rank}
+            else:
+                model_kwargs["device_map"] = "auto"
 
         model = AutoModelForCausalLM.from_pretrained(model_name, **model_kwargs)
 

@@ -192,13 +192,15 @@ def format_prompt_domain_matched(
     cache: dict[str, list[tuple[str, str]]],
     fallback_domain: str,
     n: int,
-    prompt_id: str,
+    seed_key: str,
 ) -> tuple[str, bool]:
     """Build a domain-matched few-shot prompt.
 
     If the prompt's own domain has fewer than n exemplars, fall back to the
-    fallback domain. Sampling uses a per-prompt deterministic seed so the
-    same prompt always gets the same exemplars across runs.
+    fallback domain. Sampling uses ``seed_key`` to derive a deterministic
+    RNG seed — pass ``prompt_id`` for single-sample-per-prompt runs, or
+    ``f"{prompt_id}__s{sample_index}"`` for multi-sample runs so each
+    duplicate of a prompt gets a distinct exemplar selection.
 
     Returns (formatted_prompt, used_fallback).
     """
@@ -207,7 +209,7 @@ def format_prompt_domain_matched(
     if len(pool) < n:
         pool = cache.get(fallback_domain, [])
         used_fallback = True
-    seed = abs(hash(prompt_id)) % (2**31)
+    seed = abs(hash(seed_key)) % (2**31)
     local_rng = random.Random(seed)
     selected = local_rng.sample(pool, min(n, len(pool)))
     parts = [f"Question: {q}\nAnswer: {a}" for q, a in selected]
@@ -345,12 +347,18 @@ def main() -> None:
         fallback_domain = cfg.get("fallback_domain", "chemical_hazards")
         cache = load_exemplar_cache(cache_path)
         n_fallback = 0
+        n_multisample = 0
         formatted = []
         for r in records:
             domain = (r.get("metadata") or {}).get("du_domain")
+            sample_idx = int(r.get("sample_index", 1))
+            seed_key = (f"{r['prompt_id']}__s{sample_idx:02d}"
+                        if sample_idx != 1 else r["prompt_id"])
+            if sample_idx != 1:
+                n_multisample += 1
             text, used_fb = format_prompt_domain_matched(
                 r["prompt"], domain, cache, fallback_domain,
-                few_shot_n, r["prompt_id"],
+                few_shot_n, seed_key,
             )
             formatted.append(text)
             if used_fb:
@@ -359,7 +367,8 @@ def main() -> None:
             f"[main] few-shot mode: domain_matched ({few_shot_n}-shot) "
             f"from {cache_path}; "
             f"{len(cache)} domains cached; "
-            f"{n_fallback}/{len(records)} prompts used fallback={fallback_domain}",
+            f"{n_fallback}/{len(records)} used fallback={fallback_domain}; "
+            f"{n_multisample}/{len(records)} are multi-sample (sample_index>1)",
             flush=True,
         )
     elif few_shot_n > 0:
@@ -399,9 +408,12 @@ def main() -> None:
     with output_path.open("w", encoding="utf-8") as fh:
         for r, txt, ni, no_ in zip(records, texts, n_in, n_out):
             md_in = r.get("metadata") or {}
+            sample_idx = int(r.get("sample_index", 1))
             rec = {
-                "response_id": f"{r['prompt_id']}__{response_type}__base_llama_pilot__s01",
+                "response_id": (f"{r['prompt_id']}__{response_type}__"
+                                f"base_llama_pilot__s{sample_idx:02d}"),
                 "prompt_id": r["prompt_id"],
+                "sample_index": sample_idx,
                 "response": txt,
                 "response_type": response_type,
                 "model": model_id,
