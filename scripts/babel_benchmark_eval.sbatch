@@ -32,10 +32,10 @@ cd "$REPO"
 module purge
 module load cuda-12.4
 export PATH="$HOME/miniforge3/bin:$PATH"
-# HF_HOME must point to the directory that contains the stored auth token.
-export HF_HOME=/data/group_data/wehbelab/ahlayhel/huggingface_cache
-# Single consolidated cache: Llama-3.1-8B-Instruct + allenai/wildguard (symlinked)
-export HF_HUB_CACHE=/data/group_data/wehbelab/ahlayhel/huggingface_cache/hub
+# Unified HF cache: wildguard (native) + Llama (symlinked from huggingface_cache).
+# Matches the pattern used by babel_judge_wildguard_pool_pilots.sbatch which works.
+export HF_HOME="${HF_HOME:-$HOME/.cache/huggingface}"
+export HF_HUB_CACHE=/data/group_data/wehbelab/ahlayhel/hf_cache/hub
 export TOKENIZERS_PARALLELISM=false
 
 # ── Adapter paths ──────────────────────────────────────────────────────────────

@@ -462,14 +462,11 @@ class WildGuardScorerBackend:
             f"[WildGuardScorerBackend] loading {self._WILDGUARD_MODEL} ...",
             flush=True,
         )
-        self._tok = AutoTokenizer.from_pretrained(
-            self._WILDGUARD_MODEL, local_files_only=True
-        )
+        self._tok = AutoTokenizer.from_pretrained(self._WILDGUARD_MODEL)
         self._model = AutoModelForCausalLM.from_pretrained(
             self._WILDGUARD_MODEL,
             torch_dtype=torch.bfloat16,
             device_map="auto",
-            local_files_only=True,
         )
         self._model.eval()
         print("[WildGuardScorerBackend] ready", flush=True)
