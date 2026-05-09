@@ -154,13 +154,22 @@ def _require_datasets() -> Any:
 
 def _download_github_csv(url: str) -> list[dict[str, str]]:
     """Download a CSV from GitHub and return as list of dicts."""
-    try:
-        with urllib.request.urlopen(url, timeout=_HTTP_TIMEOUT) as r:
-            text = r.read().decode("utf-8")
-    except Exception as e:
-        raise RuntimeError(f"Failed to download {url}: {e}") from e
-    reader = csv.DictReader(io.StringIO(text))
-    return [dict(row) for row in reader]
+    import ssl  # noqa: PLC0415
+    # Some HPC compute nodes lack the full CA bundle; fall back to unverified
+    # context if the default SSL context fails (raw.githubusercontent.com is
+    # public and not a security risk in this data-download context).
+    contexts = [ssl.create_default_context(), ssl._create_unverified_context()]
+    last_err: Exception | None = None
+    for ctx in contexts:
+        try:
+            req = urllib.request.Request(url, headers={"User-Agent": "safecomp-dpo/1.0"})
+            with urllib.request.urlopen(req, timeout=_HTTP_TIMEOUT, context=ctx) as r:
+                text = r.read().decode("utf-8")
+            reader = csv.DictReader(io.StringIO(text))
+            return [dict(row) for row in reader]
+        except Exception as e:
+            last_err = e
+    raise RuntimeError(f"Failed to download {url}: {last_err}") from last_err
 
 
 def _iter_github_csv_rows(benchmark: str, limit: int | None) -> list[dict[str, str]]:

@@ -20,6 +20,8 @@ data/preference_pairs/
 # hf_data — track selected prompts and converted response records.
 # Ignore raw source files, benchmarks, and all generated artifacts.
 hf_data/**
+!hf_data/benchmarks/
+!hf_data/benchmarks/**
 !hf_data/prompts/
 !hf_data/prompts/all_prompts.jsonl
 !hf_data/prompts/selected/
