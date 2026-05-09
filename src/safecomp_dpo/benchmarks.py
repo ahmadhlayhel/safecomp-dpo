@@ -232,22 +232,18 @@ class PeftBenchmarkModelBackend:
         import torch  # noqa: PLC0415
 
         messages = [{"role": "user", "content": prompt}]
-        enc = self._tok.apply_chat_template(
-            messages,
-            add_generation_prompt=True,
-            return_tensors="pt",
+        # tokenize=False gives the formatted string; we then tokenize explicitly.
+        # Avoids the apply_chat_template tensor/BatchEncoding return-type
+        # ambiguity across transformers versions (4.34+ safe).
+        text = self._tok.apply_chat_template(
+            messages, add_generation_prompt=True, tokenize=False
         )
-        # apply_chat_template returns a plain tensor in older transformers but a
-        # BatchEncoding dict in newer versions.  Normalise to a dict so generate()
-        # always receives keyword arguments.
-        if not isinstance(enc, dict):
-            enc = {"input_ids": enc}
-        enc = {k: v.to(self._model.device) for k, v in enc.items()}
-        input_len = enc["input_ids"].shape[1]
+        inputs = self._tok(text, return_tensors="pt").to(self._model.device)
+        input_len = inputs["input_ids"].shape[1]
 
         with torch.no_grad():
             out = self._model.generate(
-                **enc,
+                **inputs,
                 max_new_tokens=self.max_new_tokens,
                 do_sample=False,
                 pad_token_id=self._tok.eos_token_id,
