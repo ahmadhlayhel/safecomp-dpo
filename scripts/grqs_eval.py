@@ -145,9 +145,48 @@ _JUDGE_FN = {
 # Score one record
 # ---------------------------------------------------------------------------
 
-def score_record(rec: dict, judge: str, retries: int = 3) -> dict:
+_BENCHMARK_CATEGORY_MAP = {
+    "dualuse_sample":  "dual_use",
+    "harmbench":       "unsafe",
+    "or_bench":        "benign_sensitive",
+    "falsereject_test": "benign_sensitive",
+    "xstest":          "mixed",
+}
+
+
+def _extract_fields(rec: dict) -> tuple[str, str, str, str, str]:
+    """Extract (prompt_id, run_id, category, prompt, response) from a record.
+
+    Handles two input formats:
+    1. Direct format: {prompt_id, run_id, category, prompt, response}
+    2. BenchmarkRecord JSONL: {record_id, benchmark, prompt, response, metadata}
+       where metadata contains prompt_id; run_id is parsed from record_id.
+    """
     prompt = rec.get("prompt", "")
     response = rec.get("response", "")
+
+    # prompt_id: try top-level, then metadata
+    meta = rec.get("metadata", {}) or {}
+    prompt_id = rec.get("prompt_id") or meta.get("prompt_id", "")
+
+    # run_id: try top-level, then parse from record_id ({prompt_id}__{run_id}__bench)
+    run_id = rec.get("run_id", "")
+    if not run_id:
+        record_id = rec.get("record_id", "")
+        parts = record_id.split("__")
+        run_id = parts[1] if len(parts) >= 2 else rec.get("benchmark", "")
+
+    # category: try top-level, then infer from benchmark name
+    category = rec.get("category", "")
+    if not category:
+        benchmark = rec.get("benchmark", "")
+        category = _BENCHMARK_CATEGORY_MAP.get(benchmark, benchmark)
+
+    return prompt_id, run_id, category, prompt, response
+
+
+def score_record(rec: dict, judge: str, retries: int = 3) -> dict:
+    prompt_id, run_id, category, prompt, response = _extract_fields(rec)
     fn = _JUDGE_FN[judge]
 
     last_err = None
@@ -161,9 +200,9 @@ def score_record(rec: dict, judge: str, retries: int = 3) -> dict:
             # clamp to [1,5]
             s, h, p, c = (max(1.0, min(5.0, x)) for x in (s, h, p, c))
             return {
-                "prompt_id":    rec.get("prompt_id", ""),
-                "run_id":       rec.get("run_id", ""),
-                "category":     rec.get("category", ""),
+                "prompt_id":    prompt_id,
+                "run_id":       run_id,
+                "category":     category,
                 "judge":        judge,
                 "safety":       s,
                 "helpfulness":  h,
@@ -179,9 +218,9 @@ def score_record(rec: dict, judge: str, retries: int = 3) -> dict:
             if attempt < retries - 1:
                 time.sleep(2 ** attempt)
     return {
-        "prompt_id": rec.get("prompt_id", ""),
-        "run_id":    rec.get("run_id", ""),
-        "category":  rec.get("category", ""),
+        "prompt_id": prompt_id,
+        "run_id":    run_id,
+        "category":  category,
         "judge":     judge,
         "error":     str(last_err),
         "grqs":      None,
@@ -283,7 +322,7 @@ def main() -> None:
                     done_ids.add(obj.get("prompt_id", ""))
         print(f"Resuming: {len(done_ids)} already scored, skipping.")
 
-    todo = [r for r in records if r.get("prompt_id", "") not in done_ids]
+    todo = [r for r in records if _extract_fields(r)[0] not in done_ids]
     print(f"Scoring {len(todo)} records with judge={args.judge} (workers={args.workers})")
 
     with output_path.open("a", encoding="utf-8") as out_f:

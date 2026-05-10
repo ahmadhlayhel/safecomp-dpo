@@ -1,0 +1,7 @@
+benchmark: dualuse_sample
+model_backend: peft
+scorer_backend: none
+dataset_path: hf_data/benchmarks/dualuse_sample.jsonl
+
+model: meta-llama/Llama-3.1-8B-Instruct
+max_new_tokens: 512

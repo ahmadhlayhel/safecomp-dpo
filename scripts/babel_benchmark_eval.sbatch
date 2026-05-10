@@ -13,7 +13,7 @@
 # Usage:
 #   sbatch scripts/babel_benchmark_eval.sbatch <benchmark> <model_variant>
 #
-# benchmark:     harmbench | xstest | or_bench | falsereject_test
+# benchmark:     harmbench | xstest | or_bench | falsereject_test | dualuse_sample
 # model_variant: baseline_v1 | safecomp_v1 | baseline_v5 | safecomp_v5 | base
 #
 # Examples:
@@ -76,9 +76,12 @@ case "$BENCHMARK" in
   falsereject_test)
     CONFIG="configs/eval/benchmarks/falsereject_test_peft.yaml"
     ;;
+  dualuse_sample)
+    CONFIG="configs/eval/benchmarks/dualuse_sample_peft.yaml"
+    ;;
   *)
     echo "Unknown benchmark: $BENCHMARK" >&2
-    echo "Use: harmbench | xstest | or_bench | falsereject_test" >&2
+    echo "Use: harmbench | xstest | or_bench | falsereject_test | dualuse_sample" >&2
     exit 1
     ;;
 esac
@@ -90,9 +93,14 @@ REPORT="outputs/eval/benchmarks/${RUN_ID}_report.json"
 mkdir -p outputs/eval/benchmarks hf_data/benchmarks
 mkdir -p /data/group_data/wehbelab/ahlayhel/logs
 
-# Ingest benchmark data if not already present (one-time download).
+# Ingest benchmark data if not already present.
+# dualuse_sample is committed to git — no download needed.
 DATA_FILE="hf_data/benchmarks/${BENCHMARK}.jsonl"
 if [ ! -f "$DATA_FILE" ]; then
+    if [ "$BENCHMARK" = "dualuse_sample" ]; then
+        echo "ERROR: dualuse_sample.jsonl not found — run git pull to get it." >&2
+        exit 1
+    fi
     echo "Ingesting ${BENCHMARK} dataset..."
     python3 scripts/ingest_benchmark_data.py --benchmark "$BENCHMARK"
 else
@@ -119,3 +127,7 @@ python scripts/run_benchmark.py \
 
 echo "=== Done: $(date) ==="
 echo "Report: $REPORT"
+
+# DEV NOTE: Before submitting 20 jobs, always validate with:
+#   sbatch --wrap="bash scripts/babel_benchmark_eval.sbatch harmbench baseline_v5" --time=00:30:00
+# or add --limit 5 support to run_benchmark.py for a 5-prompt smoke test.
