@@ -144,7 +144,7 @@ class BenchmarkRecord(BaseModel):
     split: str | None = None          # "safe"/"unsafe" for XSTest; None otherwise
     prompt: str
     response: str
-    is_compliant: bool
+    is_compliant: bool | None
     score: float | None = None
     metadata: dict[str, Any] = Field(default_factory=dict)
 
