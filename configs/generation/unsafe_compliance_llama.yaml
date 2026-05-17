@@ -1,6 +1,6 @@
 # Response generation config — unsafe_compliance, Pass 2 (Llama-3.1-8B fallback)
 #
-# Covers only the prompts refused by GPT-4o-mini in Pass 1.
+# Covers only the prompts refused by GPT-4o in Pass 1.
 # Run on BABEL using the vllm backend.
 #
 # Prerequisites:

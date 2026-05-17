@@ -2,7 +2,7 @@
 # unsafe_compliance candidates.
 #
 # Goal: test whether the non-RLHF base model produces a cleaner unsafe_compliance
-# pool than the gpt-4o-mini sourced dual_use rejected pool currently in use.
+# pool than the gpt-4o sourced dual_use rejected pool currently in use.
 # This is a feasibility pilot, not a production generation. 100 prompts only.
 #
 # Read by: scripts/run_base_llama_pool_pilot.py

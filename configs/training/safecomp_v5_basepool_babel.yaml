@@ -7,12 +7,12 @@
 # The dual_use slice now consists of:
 #   - 2,302 (safe_completion > hard_refusal) pairs   [kept from old, eval-excluded]
 #   - 1,973 (safe_completion > v5 base-Llama)  pairs [NEW; replaces the
-#                                                     gpt-4o-mini-sourced
+#                                                     gpt-4o-sourced
 #                                                     unsafe_compliance pool]
 # Hyperparameters identical to safecomp_babel for clean comparability.
 
 regime: safecomp
-description: "SafeComp-DPO (v5 base-Llama rejected pool replaces gpt-4o-mini-sourced unsafe_compliance for dual_use; eval-excluded)"
+description: "SafeComp-DPO (v5 base-Llama rejected pool replaces gpt-4o-sourced unsafe_compliance for dual_use; eval-excluded)"
 model: meta-llama/Llama-3.1-8B-Instruct
 backend: trl_dpo
 

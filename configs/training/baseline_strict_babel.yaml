@@ -6,7 +6,7 @@
 # materialized in hf_data/dpo/baseline_strict_dpo_dataset.jsonl:
 #
 #   baseline (current):  dual_use → (hard_refusal > unsafe_compliance)
-#                        — but the gpt-4o-mini-sourced "unsafe_compliance"
+#                        — but the gpt-4o-sourced "unsafe_compliance"
 #                          for dual_use is *not actually unsafe*; it's
 #                          well-curated helpful analytical content.
 #                          The training contrast is therefore weak.

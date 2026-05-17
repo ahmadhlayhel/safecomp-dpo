@@ -1,9 +1,9 @@
-# Response generation config — unsafe_compliance, Pass 1 (GPT-4o-mini)
+# Response generation config — unsafe_compliance, Pass 1 (GPT-4o)
 #
 # Generates unsafe_compliance rejected-responses for unsafe + dual_use prompts.
 # This is Pass 1 of a two-stage sourcing pipeline:
 #
-#   Pass 1 (this config)  — GPT-4o-mini via openai_api backend, run locally
+#   Pass 1 (this config)  — GPT-4o via openai_api backend, run locally
 #   Pass 2 (llama config) — Llama-3.1-8B via vllm backend on BABEL,
 #                           only for prompts refused in Pass 1
 #
@@ -30,7 +30,7 @@ expected_response_types:
   dual_use:
     - unsafe_compliance
 
-model: gpt-4o-mini
+model: gpt-4o
 
 response_type_settings:
   unsafe_compliance:
