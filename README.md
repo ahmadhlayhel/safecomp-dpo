@@ -687,10 +687,12 @@ If you use this repository, cite the project report:
 
 ## Authors
 
-- Ahmad Hlayhel
-- Dana Kossaybati
-- Lynn Ariss
-- Tamara Fakih
+- Ahmad Hlayhel*
+- Dana Kossaybati*
+- Lynn Ariss*
+- Tamara Fakih*
+
+**Equal Contribution*
 
 ## Final Takeaway
 
