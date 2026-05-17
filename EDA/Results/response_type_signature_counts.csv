@@ -1,0 +1,5 @@
+response_type_signature,count
+hard_refusal + helpful_answer,3600
+hard_refusal + safe_completion + unsafe_compliance,2502
+hard_refusal + unsafe_compliance,1773
+hard_refusal,27

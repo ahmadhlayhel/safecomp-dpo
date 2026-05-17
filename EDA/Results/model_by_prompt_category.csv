@@ -1,0 +1,5 @@
+category,beavertails/30k_train,gpt-4o,gpt-4o-2024-11-20,unknown_api
+benign,0,1600,1600,0
+benign_sensitive,0,2000,2000,0
+dual_use,0,5004,0,5004
+unsafe,1773,1800,0,0

@@ -1,0 +1,42 @@
+{
+  "n_prompt_records": 7902,
+  "n_response_records": 20781,
+  "n_benchmark_records": 3556,
+  "prompt_category_counts": {
+    "dual_use": 2502,
+    "benign_sensitive": 2000,
+    "unsafe": 1800,
+    "benign": 1600
+  },
+  "prompt_source_counts": {
+    "dualuse_team_v1": 2502,
+    "falsereject": 2000,
+    "beavertails": 1800,
+    "alpaca": 1600
+  },
+  "response_type_counts": {
+    "hard_refusal": 10404,
+    "unsafe_compliance": 4275,
+    "helpful_answer": 3600,
+    "safe_completion": 2502
+  },
+  "response_model_counts": {
+    "gpt-4o": 10404,
+    "unknown_api": 5004,
+    "gpt-4o-2024-11-20": 3600,
+    "beavertails/30k_train": 1773
+  },
+  "benchmark_file_counts": {
+    "or_bench": 1319,
+    "falsereject_test": 1187,
+    "xstest": 450,
+    "harmbench": 400,
+    "dualuse_sample": 200
+  },
+  "estimated_possible_pair_counts": {
+    "hard_refusal > unsafe_compliance": 4275,
+    "helpful_answer > hard_refusal": 3600,
+    "safe_completion > hard_refusal": 2502,
+    "safe_completion > unsafe_compliance": 2502
+  }
+}

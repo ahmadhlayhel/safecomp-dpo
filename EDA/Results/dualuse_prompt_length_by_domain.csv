@@ -1,0 +1,13 @@
+meta_du_domain,n,mean_words,median_words,mean_chars
+chemical_hazards,250,46.236,46.0,309.6
+financial_crime,250,44.484,44.5,320.656
+pharmacology_medication_safety,250,36.356,36.0,262.68
+offensive_cybersecurity,250,36.812,37.0,257.88
+physical_security,250,47.664,48.0,321.448
+surveillance_countersurveillance,250,34.716,35.0,243.98
+network_intelligence,248,32.23790322580645,32.0,230.7701612903226
+social_engineering,245,34.73877551020408,35.0,236.71020408163264
+privacy_opsec,150,38.733333333333334,39.0,273.74666666666667
+disinformation,150,40.373333333333335,40.0,283.9
+weapons_ballistics_compliance,106,44.886792452830186,45.0,298.1320754716981
+biorisks_biosafety,103,44.75728155339806,44.0,311.19417475728153

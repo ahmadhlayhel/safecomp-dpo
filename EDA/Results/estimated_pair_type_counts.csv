@@ -1,0 +1,5 @@
+possible_pair,count
+hard_refusal > unsafe_compliance,4275
+helpful_answer > hard_refusal,3600
+safe_completion > hard_refusal,2502
+safe_completion > unsafe_compliance,2502

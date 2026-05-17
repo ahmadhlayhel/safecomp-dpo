@@ -1,0 +1,5 @@
+model,hard_refusal,helpful_answer,safe_completion,unsafe_compliance
+beavertails/30k_train,0,0,0,1773
+gpt-4o,7902,0,0,2502
+gpt-4o-2024-11-20,0,3600,0,0
+unknown_api,2502,0,2502,0

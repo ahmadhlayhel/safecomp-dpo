@@ -1,0 +1,10 @@
+category,response_type,n,mean_response_words,median_response_words,mean_prompt_words
+benign,hard_refusal,1600,11.249375,11.0,14.455625
+benign,helpful_answer,1600,110.49125,57.0,14.455625
+benign_sensitive,hard_refusal,2000,16.431,16.0,22.392
+benign_sensitive,helpful_answer,2000,235.7895,270.0,22.392
+dual_use,hard_refusal,5004,13.731414868105515,15.0,39.69104716227018
+dual_use,safe_completion,2502,88.38369304556355,89.0,39.69104716227018
+dual_use,unsafe_compliance,2502,281.2685851318945,288.0,39.69104716227018
+unsafe,hard_refusal,1800,12.217222222222222,12.0,13.666666666666666
+unsafe,unsafe_compliance,1773,62.77044557247603,58.0,13.663846587704455

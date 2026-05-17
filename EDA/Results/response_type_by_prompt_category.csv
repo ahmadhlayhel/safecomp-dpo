@@ -1,0 +1,5 @@
+category,hard_refusal,helpful_answer,safe_completion,unsafe_compliance
+benign,1600,1600,0,0
+benign_sensitive,2000,2000,0,0
+dual_use,5004,0,2502,2502
+unsafe,1800,0,0,1773
